@@ -2,33 +2,36 @@
 
 Use these prompts phase by phase. Do not skip phases.
 
-## Initial Assessment Prompt
+## Phase 0 — Setup, Skill, and Repo Assessment
 
 ```text
-Read AGENTS.md and inspect the project. Do not edit files yet.
+Read these files first:
+- AGENTS.md
+- IMPECCABLE.md
+- docs/DESIGN-SYSTEM.md
+- docs/IMPECCABLE-STYLE.md
+- docs/CODEX-PROMPTS.md
+- docs/ROADMAP.md
 
-I want to build Studio Klipers step by step.
+Use Impeccable in product UI mode.
+Do not edit files yet.
 
 First, give me:
-1. current project assessment,
-2. recommended implementation phases,
-3. files you plan to create or modify for Phase 1 only.
+1. current repository assessment,
+2. whether a Next.js app already exists,
+3. whether Impeccable skill appears available,
+4. packages that need to be installed for Phase 1,
+5. files you plan to create or modify for Phase 1 only,
+6. risks or blockers before implementation.
 
-Phase 1 scope:
-- install and configure shadcn/ui
-- create dark dashboard visual system
-- create app layout with sidebar and topbar
-- create landing page
-- create login page UI only
-- create protected dashboard mock layout for now
-- add Framer Motion reusable variants
-- no real auth yet
-- no database yet
-- no Cloudflare yet
-- no FFmpeg yet
+Rules:
+- Do not implement anything yet.
+- Do not start backend work.
+- Do not add auth, database, R2, or FFmpeg in Phase 1.
+- If Impeccable is not installed, tell me to run: npx skills add pbakaus/impeccable
 ```
 
-## Phase 1 Prompt
+## Phase 1 — UI Shell Prompt
 
 ```text
 Implement Phase 1 now.
@@ -40,10 +43,11 @@ Requirements:
 - use shadcn/ui
 - use Lucide icons
 - use Framer Motion
+- use Impeccable in product UI mode
 - create a premium dark dashboard style using #0B0D0E and #D1FF00
 - create reusable layout components
 - create landing page
-- create login page UI
+- create login page UI only
 - create dashboard page mock
 - create sidebar and topbar
 - create empty states and cards
@@ -53,21 +57,38 @@ After implementation:
 - tell me what files changed
 - tell me what command to run
 - tell me how to test it locally
+- run an Impeccable-style UI audit
+
+Do not implement real auth, database, Cloudflare R2, or FFmpeg yet.
 ```
 
-## UI Polish Prompt
+## Mandatory UI Audit Prompt
 
 ```text
-Do an Impeccable-style UI polish pass.
+Run an Impeccable-style UI audit.
 
-Improve spacing, typography, contrast, visual hierarchy, card layout, sidebar active states, page transitions, and empty states.
+Check:
+- spacing
+- typography
+- hierarchy
+- contrast
+- sidebar polish
+- button consistency
+- card consistency
+- empty states
+- loading states
+- error states
+- motion quality
+- dashboard clarity
+- visual clutter
+- neon lime usage
 
-Keep the style premium dark SaaS, calm, clean, creator dashboard, neon lime accent, not generic, and not cluttered.
+Then polish the UI without changing the app architecture or adding new features.
 
-Do not add backend features.
+If the UI looks generic, do not continue to backend work.
 ```
 
-## Phase 2 Auth Prompt
+## Phase 2 — Auth Prompt
 
 ```text
 Now implement Phase 2: Auth.js / NextAuth authentication.
@@ -91,7 +112,7 @@ Do not implement upload, R2, or FFmpeg yet.
 Before editing, explain packages needed, env variables needed, files to modify, and migration steps.
 ```
 
-## Phase 3 Database Prompt
+## Phase 3 — Database Prompt
 
 ```text
 Now implement Phase 3: database models for videos, clips, and processing jobs.
@@ -113,7 +134,7 @@ Do not implement FFmpeg yet.
 Before editing, show the Prisma schema changes.
 ```
 
-## Phase 4 R2 Upload Prompt
+## Phase 4 — R2 Upload Prompt
 
 ```text
 Now implement Phase 4: Cloudflare R2 video upload.
@@ -134,7 +155,7 @@ Requirements:
 Before editing, explain R2 env variables, upload approach, and security considerations.
 ```
 
-## Phase 5 Clip Job Prompt
+## Phase 5 — Clip Job Prompt
 
 ```text
 Now implement Phase 5: video detail page and create clip form.
@@ -152,7 +173,7 @@ Requirements:
 - use Framer Motion for subtle transitions
 ```
 
-## Phase 6 FFmpeg Worker Prompt
+## Phase 6 — FFmpeg Worker Prompt
 
 ```text
 Now implement Phase 6: FFmpeg worker for clip processing.
@@ -174,7 +195,7 @@ Requirements:
 Before editing, explain how to run worker locally, required dependencies, status changes, and how to test with one uploaded video.
 ```
 
-## Phase 7 Clip Preview Prompt
+## Phase 7 — Clip Preview Prompt
 
 ```text
 Now implement Phase 7: clip preview and download.
@@ -190,7 +211,7 @@ Requirements:
 - improve completed/failed/processing visual states
 ```
 
-## QA Prompt
+## Phase 8 — QA Prompt
 
 ```text
 Act as QA Engineer.
