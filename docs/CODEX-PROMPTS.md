@@ -27,7 +27,7 @@ First, give me:
 Rules:
 - Do not implement anything yet.
 - Do not start backend work.
-- Do not add auth, database, R2, or FFmpeg in Phase 1.
+- Do not add auth, database, upload/storage, or FFmpeg in Phase 1.
 - If Impeccable is not installed, tell me to run: npx skills add pbakaus/impeccable
 ```
 
@@ -59,7 +59,7 @@ After implementation:
 - tell me how to test it locally
 - run an Impeccable-style UI audit
 
-Do not implement real auth, database, Cloudflare R2, or FFmpeg yet.
+Do not implement real auth, database, upload/storage, or FFmpeg yet.
 ```
 
 ## Mandatory UI Audit Prompt
@@ -107,7 +107,7 @@ Requirements:
 - add logout
 - keep UI consistent with existing design
 
-Do not implement upload, R2, or FFmpeg yet.
+Do not implement upload, storage, or FFmpeg yet.
 
 Before editing, explain packages needed, env variables needed, files to modify, and migration steps.
 ```
@@ -128,31 +128,36 @@ Requirements:
 - update dashboard, videos page, and clips page to use real database queries
 - keep empty states when there is no data
 
-Do not implement Cloudflare R2 upload yet.
+Do not implement upload/storage yet.
 Do not implement FFmpeg yet.
 
 Before editing, show the Prisma schema changes.
 ```
 
-## Phase 4 — R2 Upload Prompt
+## Phase 4 - Local Filesystem Upload Prompt
 
 ```text
-Now implement Phase 4: Cloudflare R2 video upload.
+Now implement Phase 4: local filesystem video upload.
 
 Requirements:
-- use Cloudflare R2 S3-compatible API
 - do not use Supabase
+- do not use Cloudflare R2 for MVP
+- do not add R2 SDK packages
+- do not add R2 environment variables
 - allow MP4 upload only
 - validate file type and file size
-- store original video in R2
+- store original video under uploads/users/{userId}/videos/{videoId}/original.mp4
 - save video metadata to PostgreSQL
-- use storage key format: users/{userId}/videos/{videoId}/original.mp4
+- store Video.sourceKey as users/{userId}/videos/{videoId}/original.mp4
+- store controlled relative keys in the database without the uploads/ root, not absolute filesystem paths
+- access files only through protected API routes that verify session userId and record ownership
+- do not expose uploads as public static files
 - after successful upload, redirect user to /videos/[id]
 - show upload progress
 - show loading, error, and success states
 - keep UI premium and dark
 
-Before editing, explain R2 env variables, upload approach, and security considerations.
+Before editing, explain the local storage approach, MP4 validation, file size rules, database writes to the existing Video model, route/data protection, and risks or blockers.
 ```
 
 ## Phase 5 — Clip Job Prompt
@@ -182,9 +187,10 @@ Requirements:
 - do not run heavy FFmpeg processing in Vercel serverless
 - create a worker script
 - worker reads pending ProcessingJob
-- downloads source video from Cloudflare R2 to temp folder
+- reads source video from local filesystem storage
 - runs FFmpeg to cut the video
-- uploads output clip to Cloudflare R2
+- writes output clip to uploads/users/{userId}/clips/{clipId}/clip.mp4
+- stores Clip.outputKey as users/{userId}/clips/{clipId}/clip.mp4, not an absolute filesystem path
 - updates Clip status to COMPLETED
 - updates ProcessingJob status to COMPLETED
 - on error, mark Clip and ProcessingJob as FAILED
@@ -206,6 +212,7 @@ Requirements:
 - show source video link
 - show start/end/duration/status
 - add download button
+- preview and download files only through protected API routes
 - prevent users from accessing other users' clips
 - add polling or refresh status for processing clips
 - improve completed/failed/processing visual states
@@ -219,6 +226,21 @@ Act as QA Engineer.
 Test the entire MVP flow: login with Google, login with GitHub, upload MP4, open video detail, create clip with valid start/end, reject invalid start/end, process clip with worker, preview completed clip, download completed clip, and ensure user cannot access another user's data.
 
 Find bugs, security issues, missing states, and broken flows. Do not edit yet. Give me a bug list with severity and suggested fixes.
+```
+
+## Future Production Storage Prompt
+
+```text
+Evaluate production storage options only after the MVP local filesystem flow works.
+
+Cloudflare R2 is optional future production storage, not required MVP storage.
+
+Compare:
+- VPS local disk
+- MinIO
+- Cloudflare R2 after the payment-method blocker is resolved
+
+Do not add object storage SDK packages, object storage environment variables, or migration code unless production storage implementation is explicitly requested.
 ```
 
 ## Bug Fix Prompt

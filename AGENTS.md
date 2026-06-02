@@ -9,7 +9,7 @@ The MVP must allow users to:
 1. Login with Google or GitHub using Auth.js / NextAuth
 2. Access a protected dashboard
 3. Upload MP4 videos
-4. Store original videos in Cloudflare R2
+4. Store original videos on the local filesystem for development and MVP
 5. Store metadata in PostgreSQL using Prisma
 6. Preview uploaded videos
 7. Select start time and end time
@@ -51,11 +51,17 @@ Use:
 - GitHub OAuth
 - Prisma
 - PostgreSQL
-- Cloudflare R2
+- Local filesystem storage for development and MVP
 - FFmpeg
 - Zod
 - React Hook Form
 - BullMQ + Redis later if needed
+
+Optional future production storage:
+
+- VPS local disk
+- MinIO
+- Cloudflare R2 after the payment-method blocker is resolved
 
 ## Design direction
 
@@ -142,6 +148,13 @@ Animations must be:
 - Protect all API routes
 - Always filter data by userId
 - Do not allow users to access other users' videos or clips
+- Store uploads under `uploads/users/{userId}/videos/{videoId}/original.mp4`
+- Store generated clips later under `uploads/users/{userId}/clips/{clipId}/clip.mp4`
+- Store `Video.sourceKey` as `users/{userId}/videos/{videoId}/original.mp4`
+- Store controlled relative keys in the database without the `uploads/` root, not absolute filesystem paths
+- Serve files only through protected API routes that verify session `userId` and record ownership
+- Do not expose `uploads/` as public static files
+- Do not add Cloudflare R2 SDK packages or R2 environment variables for the MVP
 - Add loading, error, and empty states
 - Keep the MVP simple
 - Do not overengineer

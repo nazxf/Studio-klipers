@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  videos        Video[]
+  clips         Clip[]
+  processingJobs ProcessingJob[]
+
+  @@map("users")
+}
+
+model Account {
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum VideoStatus {
+  UPLOADED
+  READY
+  FAILED
+}
+
+enum ClipStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobType {
+  CREATE_CLIP
+}
+
+model Video {
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id")
+  title           String
+  fileName        String          @map("file_name")
+  mimeType        String          @map("mime_type")
+  sizeBytes       BigInt          @map("size_bytes")
+  durationSeconds Float?          @map("duration_seconds")
+  sourceKey       String?         @map("source_key")
+  status          VideoStatus     @default(UPLOADED)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clips           Clip[]
+  processingJobs  ProcessingJob[]
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@map("videos")
+}
+
+model Clip {
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id")
+  videoId         String          @map("video_id")
+  title           String
+  startSeconds    Float           @map("start_seconds")
+  endSeconds      Float           @map("end_seconds")
+  durationSeconds Float           @map("duration_seconds")
+  status          ClipStatus      @default(PENDING)
+  outputKey       String?         @map("output_key")
+  sizeBytes       BigInt?         @map("size_bytes")
+  errorMessage    String?         @map("error_message") @db.Text
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video           Video           @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  processingJobs  ProcessingJob[]
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@index([videoId])
+  @@map("clips")
+}
+
+model ProcessingJob {
+  id            String      @id @default(cuid())
+  userId        String      @map("user_id")
+  videoId       String      @map("video_id")
+  clipId        String?     @map("clip_id")
+  type          JobType
+  status        JobStatus   @default(PENDING)
+  progress      Int         @default(0)
+  attempts      Int         @default(0)
+  errorMessage  String?     @map("error_message") @db.Text
+  startedAt     DateTime?   @map("started_at")
+  completedAt   DateTime?   @map("completed_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video         Video       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  clip          Clip?       @relation(fields: [clipId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([clipId])
+  @@map("processing_jobs")
+}

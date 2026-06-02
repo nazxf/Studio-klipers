@@ -39,7 +39,8 @@ Use this checklist before moving between major phases and before deployment.
 - Invalid file type is rejected.
 - Oversized file is rejected.
 - Upload progress is visible.
-- Original file is stored in Cloudflare R2.
+- Original file is stored under `uploads/users/{userId}/videos/{videoId}/original.mp4`.
+- Database stores `Video.sourceKey` as `users/{userId}/videos/{videoId}/original.mp4`, not an absolute filesystem path.
 - Metadata is stored in PostgreSQL.
 - User is redirected to video detail page.
 
@@ -49,21 +50,36 @@ Use this checklist before moving between major phases and before deployment.
 - Video player loads the uploaded video.
 - Start time input works.
 - End time input works.
+- Set Start Here captures the current local video time.
+- Set End Here captures the current local video time.
+- Preview Selection plays only the selected local video range.
 - End time must be greater than start time.
+- Start time must be greater than or equal to 0.
+- Clip duration must be at least 3 seconds.
+- Clip duration must be 5 minutes or shorter.
+- NaN and infinity values are rejected.
 - Create clip button creates a Clip record.
 - ProcessingJob record is created.
 - Clip starts as PENDING.
+- ProcessingJob starts as PENDING with type CREATE_CLIP.
+- Clip title is trimmed, capped, and given a fallback when empty.
+- Clips created from the video appear below the player.
 
 ## Phase 6 Worker
 
+- `npm run worker:clips` runs the local worker.
+- Worker processes exactly one pending job and exits.
 - Worker can find pending jobs.
-- Worker downloads source video from R2.
+- Worker reads source video from local filesystem storage.
 - Worker runs FFmpeg.
-- Worker uploads output clip to R2.
+- Worker writes output clip under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
+- Worker stores `Clip.outputKey` as `users/{userId}/clips/{clipId}/clip.mp4`, not an absolute filesystem path.
 - Worker updates clip status to COMPLETED.
 - Worker marks failed jobs as FAILED.
 - Worker stores useful error messages.
 - Worker cleans temporary files.
+- Worker deletes incomplete output files on failure.
+- Worker does not require Redis, BullMQ, R2, cron, daemon, or a background queue service.
 
 ## Phase 7 Clip Result
 
@@ -80,15 +96,18 @@ Use this checklist before moving between major phases and before deployment.
 - Dashboard routes are protected.
 - API routes check session.
 - Database queries filter by userId.
+- File preview and download routes verify session `userId` and record ownership.
 - Users cannot access files belonging to other users.
+- `uploads/` is not exposed as public static files.
 - Secrets are never committed.
 - `.env.local` is ignored by Git.
+- `uploads/` is ignored by Git.
 
 ## Deployment readiness
 
 - Environment variables are documented.
 - Production database is configured.
-- R2 bucket is configured.
+- Storage plan is chosen for production if needed: VPS local disk, MinIO, or optional Cloudflare R2 after the payment-method blocker is resolved.
 - OAuth callback URLs are configured.
 - Worker deployment plan is clear.
 - FFmpeg exists on worker server.
