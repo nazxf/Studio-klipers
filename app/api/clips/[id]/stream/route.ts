@@ -1,12 +1,10 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getLocalVideoSourceKey, resolveLocalUploadKey } from "@/server/storage";
+import { resolveCompletedClipOutputForUser } from "@/server/clip-files";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,8 +35,8 @@ function streamFile({
   }
 
   return new Response(stream as ReadableStream, {
-    status,
     headers,
+    status,
   });
 }
 
@@ -67,8 +65,8 @@ function parseRange(rangeHeader: string | null, fileSize: number) {
     }
 
     return {
-      start: Math.max(fileSize - suffixLength, 0),
       end: fileSize - 1,
+      start: Math.max(fileSize - suffixLength, 0),
     };
   }
 
@@ -86,8 +84,8 @@ function parseRange(rangeHeader: string | null, fileSize: number) {
   }
 
   return {
-    start,
     end: Math.min(end, fileSize - 1),
+    start,
   };
 }
 
@@ -102,74 +100,39 @@ export async function GET(
   }
 
   const { id } = await params;
-  const video = await prisma.video.findFirst({
-    where: {
-      id,
-      userId: session.user.id,
-    },
-    select: {
-      sourceKey: true,
-    },
+  const clipOutput = await resolveCompletedClipOutputForUser({
+    clipId: id,
+    userId: session.user.id,
   });
 
-  if (!video?.sourceKey) {
+  if (!clipOutput) {
     return new NextResponse(null, { status: 404 });
   }
 
-  if (video.sourceKey !== getLocalVideoSourceKey(session.user.id, id)) {
-    return new NextResponse(null, { status: 404 });
-  }
-
-  let filePath: string;
-
-  try {
-    filePath = resolveLocalUploadKey(video.sourceKey);
-  } catch {
-    return new NextResponse(null, { status: 404 });
-  }
-
-  let fileSize: number;
-
-  try {
-    const fileStat = await stat(filePath);
-
-    if (!fileStat.isFile()) {
-      return new NextResponse(null, { status: 404 });
-    }
-
-    fileSize = fileStat.size;
-
-    if (fileSize <= 0) {
-      return new NextResponse(null, { status: 404 });
-    }
-  } catch {
-    return new NextResponse(null, { status: 404 });
-  }
-
-  const range = parseRange(request.headers.get("range"), fileSize);
+  const range = parseRange(request.headers.get("range"), clipOutput.fileSize);
 
   if (range === "invalid") {
     return new NextResponse(null, {
-      status: 416,
       headers: {
-        "Content-Range": `bytes */${fileSize}`,
+        "Content-Range": `bytes */${clipOutput.fileSize}`,
       },
+      status: 416,
     });
   }
 
   if (range) {
     return streamFile({
       end: range.end,
-      filePath,
-      fileSize,
+      filePath: clipOutput.filePath,
+      fileSize: clipOutput.fileSize,
       start: range.start,
     });
   }
 
   return streamFile({
-    end: fileSize - 1,
-    filePath,
-    fileSize,
+    end: clipOutput.fileSize - 1,
+    filePath: clipOutput.filePath,
+    fileSize: clipOutput.fileSize,
     start: 0,
     status: 200,
   });

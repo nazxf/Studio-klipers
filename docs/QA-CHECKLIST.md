@@ -17,8 +17,9 @@ Use this checklist before moving between major phases and before deployment.
 
 ## Phase 2 Auth
 
-- User can login with Google.
-- User can login with GitHub.
+- User can login with Google from the `/login` client button flow.
+- User can login with GitHub from the `/login` client button flow.
+- OAuth provider tests use the real client buttons or CSRF-backed sign-in flow, not direct GET requests to provider sign-in endpoints.
 - User can logout.
 - Dashboard is protected.
 - Unauthenticated users are redirected to login.
@@ -41,6 +42,8 @@ Use this checklist before moving between major phases and before deployment.
 - Upload progress is visible.
 - Original file is stored under `uploads/users/{userId}/videos/{videoId}/original.mp4`.
 - Database stores `Video.sourceKey` as `users/{userId}/videos/{videoId}/original.mp4`, not an absolute filesystem path.
+- Database stores `Video.durationSeconds` from server-side MP4 metadata probing.
+- Upload fails with a safe error if server-side duration metadata cannot be detected.
 - Metadata is stored in PostgreSQL.
 - User is redirected to video detail page.
 
@@ -57,6 +60,8 @@ Use this checklist before moving between major phases and before deployment.
 - Start time must be greater than or equal to 0.
 - Clip duration must be at least 3 seconds.
 - Clip duration must be 5 minutes or shorter.
+- Clip end time must not exceed server-stored source video duration.
+- Clip creation is rejected when the source video has no server-stored duration metadata.
 - NaN and infinity values are rejected.
 - Create clip button creates a Clip record.
 - ProcessingJob record is created.
@@ -97,6 +102,7 @@ Use this checklist before moving between major phases and before deployment.
 - API routes check session.
 - Database queries filter by userId.
 - File preview and download routes verify session `userId` and record ownership.
+- Video stream routes verify the exact expected `Video.sourceKey` shape before resolving local files.
 - Users cannot access files belonging to other users.
 - `uploads/` is not exposed as public static files.
 - Secrets are never committed.

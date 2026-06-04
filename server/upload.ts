@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { probeMp4DurationSeconds } from "@/server/media-toolchain";
 import { getLocalVideoSourceKey, resolveLocalUploadKey } from "@/server/storage";
 
 export const MAX_LOCAL_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -14,6 +15,7 @@ const VALID_UPLOAD_ERROR_CODES = new Set([
   "too_large",
   "invalid_type",
   "invalid_mp4",
+  "duration_unknown",
   "storage",
 ]);
 
@@ -66,6 +68,8 @@ export function getUploadErrorMessage(errorCode?: string) {
     too_large: "Use an MP4 up to 100 MB for local development storage.",
     invalid_type: "Only MP4 files are supported in Phase 4A.",
     invalid_mp4: "The file does not look like a valid MP4 container.",
+    duration_unknown:
+      "The MP4 duration could not be detected. Verify local FFmpeg setup and try again.",
     storage: "The upload could not be saved locally. Try again.",
   };
 
@@ -115,6 +119,15 @@ export async function saveLocalMp4Upload({
   await mkdir(path.dirname(localPath), { recursive: true });
   await writeFile(localPath, bytes);
 
+  let durationSeconds: number;
+
+  try {
+    durationSeconds = await probeMp4DurationSeconds(localPath);
+  } catch {
+    await unlink(localPath).catch(() => undefined);
+    throw new UploadValidationError("duration_unknown");
+  }
+
   try {
     return await prisma.video.create({
       data: {
@@ -124,6 +137,7 @@ export async function saveLocalMp4Upload({
         fileName,
         mimeType: "video/mp4",
         sizeBytes: BigInt(file.size),
+        durationSeconds,
         sourceKey,
         status: "UPLOADED",
       },

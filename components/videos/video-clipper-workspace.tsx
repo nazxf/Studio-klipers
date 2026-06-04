@@ -303,7 +303,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
           <CardHeader>
             <CardTitle>Create pending clip</CardTitle>
             <CardDescription>
-              Queue a clip range for the future FFmpeg worker without cutting video yet.
+              Queue a clip range for the local FFmpeg worker.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">

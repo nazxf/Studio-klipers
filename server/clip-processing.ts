@@ -6,9 +6,13 @@ import { ClipStatus, JobStatus, JobType } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "../lib/prisma";
+import {
+  getRawClipProcessingErrorMessage,
+  getSafeClipProcessingErrorMessage,
+} from "./clip-errors";
+import { getFfmpegCommand } from "./media-toolchain";
 import { getLocalClipOutputKey, resolveLocalUploadKey } from "./storage";
 
-const MAX_ERROR_MESSAGE_LENGTH = 1200;
 const MAX_CAPTURED_FFMPEG_OUTPUT = 5000;
 
 type ClaimedJob = {
@@ -42,13 +46,6 @@ function appendCapturedOutput(currentOutput: string, nextChunk: Buffer) {
   }
 
   return combinedOutput.slice(-MAX_CAPTURED_FFMPEG_OUTPUT);
-}
-
-function toUsefulErrorMessage(error: unknown) {
-  const rawMessage = error instanceof Error ? error.message : String(error);
-  const message = rawMessage.replace(/\s+/g, " ").trim();
-
-  return (message || "Clip processing failed.").slice(0, MAX_ERROR_MESSAGE_LENGTH);
 }
 
 async function assertFileExists(filePath: string, label: string) {
@@ -174,7 +171,7 @@ function runFfmpeg({
   ];
 
   return new Promise<void>((resolve, reject) => {
-    const ffmpeg = spawn("ffmpeg", args, {
+    const ffmpeg = spawn(/*turbopackIgnore: true*/ getFfmpegCommand(), args, {
       windowsHide: true,
     });
     let stderr = "";
@@ -352,7 +349,10 @@ export async function processNextClipJob(): Promise<WorkerResult> {
       status: "processed",
     };
   } catch (error) {
-    const errorMessage = toUsefulErrorMessage(error);
+    const rawErrorMessage = getRawClipProcessingErrorMessage(error);
+    const errorMessage = getSafeClipProcessingErrorMessage(error);
+
+    console.error(`Clip job ${claimedJob.id} failed: ${rawErrorMessage || errorMessage}`);
 
     if (outputPath) {
       await unlink(outputPath).catch(() => undefined);

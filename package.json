@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "worker:clips": "tsx workers/clip-worker.ts"
+    "worker:clips": "tsx workers/clip-worker.ts",
+    "check:media": "tsx scripts/check-media.ts",
+    "backfill:durations": "tsx scripts/backfill-video-durations.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

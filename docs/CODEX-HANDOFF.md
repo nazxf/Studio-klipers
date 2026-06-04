@@ -2,7 +2,22 @@
 
 ## Current Project Status
 
-Studio Klipers is a Next.js App Router MVP scaffold for a video clipping product. The repository now has a polished dark creator-dashboard UI shell, completed Phase 2 authentication, completed Phase 3 database models, current-user scoped reads, and an updated local filesystem storage plan for development/MVP.
+Studio Klipers is a Next.js App Router local MVP for authenticated video clipping. The repository now has the polished dark creator-dashboard UI shell, Google/GitHub Auth.js login, PostgreSQL/Prisma models, local MP4 upload, protected video streaming, pending clip job creation, a local FFmpeg worker, protected clip output routes/UI, and Phase 7.1 hardening/security fixes.
+
+Current working local MVP:
+
+- Login with Google and GitHub works.
+- Dashboard protection works.
+- Local PostgreSQL via Laragon works.
+- Local MP4 upload works.
+- Video preview works through a protected stream route.
+- Create pending clip works.
+- `npm run worker:clips` processes one pending clip and exits.
+- Clip output is saved locally under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
+- Clip and processing job records become `COMPLETED`.
+- Duration validation is hardened with server-side `ffprobe` duration probing on upload.
+- Worker errors are sanitized before user display/storage.
+- Source key shape validation is enforced for protected video streaming.
 
 ## Completed Phases
 
@@ -119,6 +134,32 @@ Studio Klipers is a Next.js App Router MVP scaffold for a video clipping product
 - Added shared local storage key helpers in `server/storage.ts`.
 - Did not add Cloudflare R2, R2 SDK packages, Redis, BullMQ, cron, daemon, background queue service, subtitles, gameplay + facecam, payment, AI, social features, public sharing, or Phase 7 UI.
 
+### Phase 7 Clip Preview And Download
+
+- Added protected clip stream route at `/api/clips/[id]/stream`.
+- Added protected clip download route at `/api/clips/[id]/download`.
+- Added `/clips/[id]` detail page with protected completed-clip preview.
+- Added server-side clip detail query for current-user scoped clip/source metadata.
+- Added shared completed clip output resolver that verifies session user, clip ownership, `COMPLETED` status, exact output key shape, uploads path containment, and local file existence.
+- Updated `/clips` list with richer status rows and completed-only Open/Preview/Download actions.
+- Detail page shows clip title, status, source video link, start/end/duration, output size, preview player only when completed, download button only when completed, and failed-state messaging.
+- Added lightweight refresh for pending/processing clip states.
+- Did not add public sharing, R2, BullMQ/Redis, subtitles, AI, payment, social features, or worker/upload feature changes.
+
+### Phase 7.1 Hardening And Security Fixes
+
+- Upload now probes MP4 duration server-side with `ffprobe` and stores `Video.durationSeconds`.
+- Upload fails with a safe user-facing error if duration cannot be detected.
+- Clip creation now rejects source videos with missing duration metadata.
+- Clip creation still rejects ranges whose end time exceeds the server-stored source video duration.
+- Worker errors are sanitized so absolute local paths such as `D:\...` are not rendered to users.
+- Raw worker failure details are logged server-side only.
+- Existing failed clip/job errors are sanitized when read for the clip detail page.
+- Protected video stream route now verifies `Video.sourceKey` exactly matches `users/{userId}/videos/{videoId}/original.mp4`.
+- Protected clip stream/download routes already verify exact `Clip.outputKey` shape as `users/{userId}/clips/{clipId}/clip.mp4`.
+- `.env.example` labels R2/Redis variables as future optional production storage/queue, not active MVP requirements.
+- `docs/QA-CHECKLIST.md` now says OAuth should be tested through the real client buttons or CSRF-backed sign-in flow, not direct GET sign-in endpoints.
+
 ## Confirmed Stack
 
 - Next.js App Router
@@ -168,8 +209,11 @@ Studio Klipers is a Next.js App Router MVP scaffold for a video clipping product
 - `app/videos/page.tsx`
 - `app/videos/[id]/page.tsx`
 - `app/clips/page.tsx`
+- `app/clips/[id]/page.tsx`
 - `app/api/auth/[...nextauth]/route.ts`
 - `app/api/upload/route.ts`
+- `app/api/clips/[id]/download/route.ts`
+- `app/api/clips/[id]/stream/route.ts`
 - `app/api/videos/[id]/clips/route.ts`
 - `app/api/videos/[id]/stream/route.ts`
 - `proxy.ts`
@@ -177,6 +221,7 @@ Studio Klipers is a Next.js App Router MVP scaffold for a video clipping product
 - `app/error.tsx`
 - `app/not-found.tsx`
 - `components/auth/*`
+- `components/clips/*`
 - `components/upload/*`
 - `components/videos/*`
 - `components/ui/*`
@@ -190,6 +235,8 @@ Studio Klipers is a Next.js App Router MVP scaffold for a video clipping product
 - `server/current-user.ts`
 - `server/dashboard.ts`
 - `server/upload.ts`
+- `server/clip-errors.ts`
+- `server/clip-files.ts`
 - `server/clip-jobs.ts`
 - `server/clip-processing.ts`
 - `server/storage.ts`
@@ -213,32 +260,38 @@ Studio Klipers is a Next.js App Router MVP scaffold for a video clipping product
 
 - Do not delete or overwrite existing documentation files.
 - Do not remove `README.md`, `AGENTS.md`, `IMPECCABLE.md`, `.env.example`, or `docs/`.
+- Do not commit `.env`.
+- Do not commit `.env.local`.
+- Do not commit `uploads/`.
 - Do not use Supabase.
-- Do not redo Phase 1, Phase 2, Phase 3, Phase 4A, Phase 5, or Phase 6.
+- Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, or Phase 7.1.
 - Do not reimplement upload/local storage, clip job creation, local worker processing, or implement Cloudflare R2, subtitles, payment, AI features, social feed, likes/comments, public profiles, team workspace, YouTube downloader, TikTok integration, or complex timeline editing outside the roadmap phase.
-- Do not add Cloudflare R2 SDK packages or R2 environment variables for the MVP.
+- Do not add Cloudflare R2 SDK packages or make R2 an MVP requirement.
 - Do not expose `uploads/` as public static files.
-- Do not move to Phase 7 or later implementation unless the user explicitly requests implementation.
+- Do not add new features until the final local MVP QA pass is complete.
 - Do not switch from Lucide Icons unless explicitly approved.
+- Keep Taste as the primary design taste layer and Impeccable-style audit as the secondary quality gate.
+- Keep the dark charcoal + neon lime UI direction.
 
-## Next Phase
+## Next Step
 
-Phase 6 local FFmpeg worker processing is complete. The next phase, when explicitly requested, is Phase 7 clip preview and download.
+Start a new Codex session and run a final QA pass for the local MVP flow. Do not add new features until QA is complete.
 
-Completed Phase 4A storage details:
+Current local storage details:
 
 - Do not use Cloudflare R2 for MVP.
 - Do not add R2 SDK packages.
-- Do not add R2 environment variables.
 - Store original source videos under `uploads/users/{userId}/videos/{videoId}/original.mp4`.
-- Store generated clips later under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
+- Store generated clips under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
 - Save uploaded video metadata to PostgreSQL using the existing `Video` model.
 - Store `Video.sourceKey` as `users/{userId}/videos/{videoId}/original.mp4`.
+- Store `Clip.outputKey` as `users/{userId}/clips/{clipId}/clip.mp4`.
 - Store controlled relative keys in the database without the `uploads/` root, not absolute filesystem paths.
 - Use current-user scoped storage keys.
 - Keep all uploaded video data filtered by `userId`.
 - Serve previews/downloads through protected API routes that verify session `userId` and record ownership.
 - Do not expose `uploads/` as public static files.
+- `uploads/` is ignored by Git.
 - Keep the UI consistent with the approved Phase 1.1 design.
 
 Cloudflare R2 is optional future production storage only. Do not implement subtitles, payment, AI, social features, R2 SDK/env configuration, or later-phase features before their roadmap phase.
@@ -250,30 +303,39 @@ Read AGENTS.md, IMPECCABLE.md, docs/DESIGN-SYSTEM.md, docs/IMPECCABLE-STYLE.md, 
 
 Use Taste as the primary visual design taste layer and Impeccable-style audit as the secondary quality gate.
 
-Do not redo Phase 1 or Phase 2.
+Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, or Phase 7.1.
 
-Do not redo Phase 3.
+Act as QA Engineer.
 
-Do not redo Phase 4A.
+Run the final local MVP QA pass only:
+- login with Google from the real `/login` client button flow,
+- login with GitHub from the real `/login` client button flow,
+- logout,
+- dashboard protection,
+- upload valid MP4,
+- reject non-MP4,
+- reject oversized file,
+- confirm `Video.durationSeconds` is stored after upload,
+- video detail protected preview,
+- create valid clip,
+- reject invalid clip ranges,
+- reject clip ranges beyond source duration,
+- run `npm run worker:clips`,
+- preview completed clip,
+- download completed clip,
+- check pending/processing/failed states,
+- check user ownership protections,
+- check protected video stream route,
+- check protected clip stream route,
+- check protected clip download route,
+- confirm `uploads/`, `.env`, and `.env.local` are ignored by Git.
 
-Do not redo Phase 5.
-
-Do not redo Phase 6.
-
-Continue with Phase 7 only if the user explicitly requests implementation: clip preview and download for completed local clips.
-
-Before editing, explain:
-1. completed clip preview/download route approach,
-2. how protected routes verify current user and clip ownership,
-3. how `Clip.outputKey` is resolved safely inside `uploads/`,
-4. UI states for PENDING, PROCESSING, COMPLETED, and FAILED clips,
-5. polling or refresh approach,
-6. risks or blockers.
+Do not edit files unless explicitly asked after reporting QA findings.
 
 Use this original video path shape: uploads/users/{userId}/videos/{videoId}/original.mp4
 Use this Video.sourceKey shape: users/{userId}/videos/{videoId}/original.mp4
-Use this future clip path shape: uploads/users/{userId}/clips/{clipId}/clip.mp4
-Use this future Clip.outputKey shape: users/{userId}/clips/{clipId}/clip.mp4
+Use this clip path shape: uploads/users/{userId}/clips/{clipId}/clip.mp4
+Use this Clip.outputKey shape: users/{userId}/clips/{clipId}/clip.mp4
 
 Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variables, subtitles, payment, AI, social features, public sharing, or any later roadmap phase.
 ```
@@ -281,6 +343,7 @@ Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variable
 ## Known Issues
 
 - `npm audit --omit=dev` reports two moderate warnings inside Next's nested PostCSS dependency. The suggested forced fix would make a breaking Next version change, so it has not been applied.
+- `/videos/not-real` and `/clips/not-real` may render the not-found UI with HTTP `200` in production because of Next streaming behavior. No protected data leaks. Route-level owned-record prechecks are present, but the streamed shell can keep the status at `200`.
 
 ## Commands Verified
 
@@ -299,3 +362,10 @@ Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variable
 - Dashboard stats read from PostgreSQL.
 - `/videos` and `/clips` use current-user scoped database queries.
 - Logout works.
+- Local MP4 upload works and stores server-detected `Video.durationSeconds` when `ffprobe` is available through the local FFmpeg install.
+- Protected video stream route verifies exact `Video.sourceKey` shape before resolving local files.
+- Protected clip stream route works for completed clips only.
+- Protected clip download route works for completed clips only.
+- Completed clip output is stored locally under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
+- Worker errors are sanitized before user display/storage.
+- Clip range validation rejects missing duration metadata and ranges beyond source duration.

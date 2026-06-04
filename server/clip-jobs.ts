@@ -13,6 +13,7 @@ const VALID_CLIP_ERROR_CODES = new Set([
   "end_before_start",
   "too_short",
   "too_long",
+  "duration_missing",
   "beyond_duration",
   "video_not_found",
   "source_missing",
@@ -60,6 +61,7 @@ export function getClipValidationMessage(errorCode?: string) {
     end_before_start: "End time must be greater than start time.",
     too_short: "Clip duration must be at least 3 seconds.",
     too_long: "Clip duration must be 5 minutes or shorter.",
+    duration_missing: "This source video needs duration metadata before clips can be created.",
     beyond_duration: "End time cannot be greater than the source video duration.",
     video_not_found: "The source video was not found for this workspace.",
     source_missing: "This video does not have a local source file registered.",
@@ -127,7 +129,11 @@ export async function createPendingClipJob({
     throw new ClipValidationError("too_long");
   }
 
-  if (video.durationSeconds !== null && endSeconds > video.durationSeconds) {
+  if (video.durationSeconds === null) {
+    throw new ClipValidationError("duration_missing");
+  }
+
+  if (endSeconds > video.durationSeconds) {
     throw new ClipValidationError("beyond_duration");
   }
 
