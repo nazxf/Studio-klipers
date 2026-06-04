@@ -72,7 +72,7 @@ export function DashboardHome({
     {
       label: "Ready clips",
       value: formatCount(stats.readyClipCount),
-      helper: "Completed clips ready for preview later.",
+      helper: "Completed clips ready for preview and download.",
       icon: Download,
       tone: "neutral" as const,
     },
@@ -83,7 +83,7 @@ export function DashboardHome({
       <PageHeader
         eyebrow="Workspace"
         title="Creator operations cockpit"
-        description="A focused command surface for local source intake, clip decisions, and render status as the MVP workflow comes online."
+        description="A focused command surface for local MP4 intake, clip decisions, and worker status."
         action={
           <Button asChild>
             <Link href="/upload">
@@ -119,7 +119,7 @@ export function DashboardHome({
         <EmptyState
           icon={Scissors}
           title="Clip library waiting"
-          description="Pending clips can be queued from video detail pages. Completed cuts arrive after the Phase 6 worker."
+          description="Create a range from a video detail page, then run npm run worker:clips to produce the next pending clip."
           action={
             <Button asChild variant="secondary">
               <Link href="/videos">

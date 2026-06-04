@@ -18,9 +18,9 @@ const steps = [
   },
   {
     title: "Create clip",
-    description: "Create pending jobs now; FFmpeg processing waits for Phase 6.",
+    description: "Queue the range for the local FFmpeg worker.",
     icon: Scissors,
-    state: "Pending",
+    state: "Worker",
   },
 ];
 
@@ -58,7 +58,7 @@ export function WorkflowCard() {
         <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3">
           <Circle className="mt-0.5 size-4 text-primary" aria-hidden="true" />
           <p className="text-sm leading-6 text-muted-foreground">
-            Phase 5 queues pending clip jobs. Actual cutting remains reserved for the Phase 6 worker.
+            Run npm run worker:clips locally to process one queued clip job and write the MP4 output.
           </p>
         </div>
       </CardContent>

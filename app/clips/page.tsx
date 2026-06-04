@@ -81,7 +81,7 @@ function getClipStatusCopy(status: string, hasOutput: boolean) {
     return "Processing failed. Open the clip for the error details.";
   }
 
-  return "Waiting for the local worker.";
+  return "Waiting for npm run worker:clips.";
 }
 
 export default async function ClipsPage() {
@@ -98,7 +98,7 @@ export default async function ClipsPage() {
       <PageHeader
         eyebrow="Cuts"
         title="Clips"
-        description="Clip records created from your own source videos."
+        description="Queued, processing, completed, and failed clips from your own source videos."
         action={
           <Button asChild>
             <Link href="/videos">
@@ -114,7 +114,7 @@ export default async function ClipsPage() {
           <EmptyState
             icon={Scissors}
             title="No clips created yet"
-            description="Clip records will appear here after the video detail workflow creates start and end ranges."
+            description="Open a source video, choose a start and end time, then create a clip job for the local worker."
             action={
               <Button asChild variant="secondary">
                 <Link href="/videos">

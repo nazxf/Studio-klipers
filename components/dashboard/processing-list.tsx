@@ -45,14 +45,14 @@ export function ProcessingList({ jobs }: { jobs: ProcessingJobItem[] }) {
     <Card className="shadow-none">
       <CardHeader>
         <CardTitle>Render queue</CardTitle>
-        <CardDescription>Processing jobs recorded for your workspace.</CardDescription>
+        <CardDescription>Local worker jobs recorded for your workspace.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {jobs.length === 0 ? (
           <div className="rounded-md border border-dashed border-border bg-secondary/35 p-5">
             <p className="text-sm font-semibold text-foreground">No jobs queued</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Create a clip from a video detail page to queue a pending processing job.
+              Create a clip from a video detail page. Pending jobs are processed by npm run worker:clips.
             </p>
           </div>
         ) : null}

@@ -56,7 +56,7 @@ export default async function VideoDetailPage({
       <PageHeader
         eyebrow="Clipper workspace"
         title={video.title}
-        description="Preview the protected local source, mark a range, and queue a pending clip job for the local worker."
+        description="Preview the protected source, mark a range, and queue a clip for npm run worker:clips."
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2">

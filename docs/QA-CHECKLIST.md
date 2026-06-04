@@ -2,6 +2,19 @@
 
 Use this checklist before moving between major phases and before deployment.
 
+## Local MVP Preflight
+
+- `npm run lint` passes.
+- `npm run build` passes.
+- `npx prisma validate` passes.
+- `npm run check:media` passes.
+- Node can spawn `ffmpeg`.
+- Node can spawn `ffprobe`.
+- `ffmpeg` and `ffprobe` versions are readable.
+- If `ffmpeg` or `ffprobe` is missing, install FFmpeg full build, add its bin folder to PATH, then restart terminal/dev server.
+- Existing local videos with `durationSeconds: null` are backfilled with `npm run backfill:durations` before clip creation testing.
+- Backfill updates only `Video.durationSeconds` and does not create clips or jobs.
+
 ## Phase 1 UI
 
 - Landing page loads.
@@ -44,6 +57,7 @@ Use this checklist before moving between major phases and before deployment.
 - Database stores `Video.sourceKey` as `users/{userId}/videos/{videoId}/original.mp4`, not an absolute filesystem path.
 - Database stores `Video.durationSeconds` from server-side MP4 metadata probing.
 - Upload fails with a safe error if server-side duration metadata cannot be detected.
+- Upload duration errors do not expose local filesystem paths in the browser UI.
 - Metadata is stored in PostgreSQL.
 - User is redirected to video detail page.
 
@@ -69,6 +83,7 @@ Use this checklist before moving between major phases and before deployment.
 - ProcessingJob starts as PENDING with type CREATE_CLIP.
 - Clip title is trimmed, capped, and given a fallback when empty.
 - Clips created from the video appear below the player.
+- Pending clip copy makes it clear that the local worker command is `npm run worker:clips`.
 
 ## Phase 6 Worker
 
@@ -85,6 +100,7 @@ Use this checklist before moving between major phases and before deployment.
 - Worker cleans temporary files.
 - Worker deletes incomplete output files on failure.
 - Worker does not require Redis, BullMQ, R2, cron, daemon, or a background queue service.
+- Worker failure messages shown in the app are sanitized and do not expose local filesystem paths.
 
 ## Phase 7 Clip Result
 
@@ -93,8 +109,32 @@ Use this checklist before moving between major phases and before deployment.
 - Completed clip can be previewed.
 - Completed clip can be downloaded.
 - Processing state is clear.
+- Pending state tells the operator to run `npm run worker:clips`.
 - Failed state is clear.
 - User cannot access another user's clip.
+
+## Verified End-to-End Local Flow
+
+- Run `npm run check:media`.
+- Start the app with `npm run dev`.
+- Login with Google from the real `/login` client button flow.
+- Logout.
+- Login with GitHub from the real `/login` client button flow.
+- Upload a valid MP4.
+- Confirm the upload stores `Video.durationSeconds`.
+- Confirm `/videos` lists the source video.
+- Confirm `/videos/[id]` preview works through `/api/videos/[id]/stream`.
+- Create a valid clip.
+- Confirm invalid clip ranges are rejected.
+- Confirm clip ranges beyond source duration are rejected.
+- Confirm the clip appears as PENDING in `/clips`.
+- Run `npm run worker:clips`.
+- Confirm the completed clip appears in `/clips`.
+- Confirm `/clips/[id]` preview works through `/api/clips/[id]/stream`.
+- Confirm `/api/clips/[id]/download` downloads the completed MP4.
+- Confirm failed clips show safe errors only.
+- Confirm unauthenticated users cannot access protected pages or APIs.
+- Confirm one user cannot access another user's videos or clips.
 
 ## Security
 

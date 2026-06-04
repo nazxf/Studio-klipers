@@ -94,7 +94,7 @@ export function AppSidebar() {
             <Clapperboard className="size-4" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-tight text-foreground">Phase 4A storage</p>
+            <p className="text-sm font-semibold tracking-tight text-foreground">Local MVP storage</p>
             <p className="font-mono text-[11px] text-muted-foreground">Local MP4 intake</p>
           </div>
         </div>

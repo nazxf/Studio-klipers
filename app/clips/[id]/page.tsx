@@ -94,7 +94,7 @@ function getStatusCopy(status: string) {
   if (status === "PROCESSING") {
     return {
       title: "Processing clip",
-      description: "The local worker is preparing the MP4 output.",
+      description: "The local worker is preparing the MP4 output. This page refreshes while the job is active.",
     };
   }
 
@@ -107,7 +107,7 @@ function getStatusCopy(status: string) {
 
   return {
     title: "Queued",
-    description: "This clip is waiting for the local worker.",
+    description: "This clip is waiting for npm run worker:clips.",
   };
 }
 
@@ -180,7 +180,7 @@ export default async function ClipDetailPage({
       <PageHeader
         eyebrow="Clip detail"
         title={clip.title}
-        description="Protected local clip output, source context, and processing status."
+        description="Protected local output, source context, and worker status."
         action={
           canUseOutput ? (
             <Button asChild>

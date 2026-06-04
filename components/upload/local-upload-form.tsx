@@ -45,7 +45,7 @@ function getClientFileError(file: File | null) {
   }
 
   if (!file.name.toLowerCase().endsWith(".mp4") || (file.type && file.type !== "video/mp4")) {
-    return "Only MP4 files are supported in Phase 4A.";
+    return "Only MP4 files are supported in the local MVP.";
   }
 
   return null;
@@ -136,7 +136,7 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
       <CardHeader>
         <CardTitle>Local MP4 intake</CardTitle>
         <CardDescription>
-          Development storage only. Files are saved outside public static paths.
+          Files are stored locally, scanned for duration, and served only through protected routes.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -188,7 +188,7 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
                   {fileLabel}
                 </p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Stored under the controlled local uploads directory for Phase 4A.
+                  Stored under the controlled local uploads directory for this authenticated user.
                 </p>
               </div>
             </div>
@@ -223,7 +223,7 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-muted-foreground">
-              Local dev storage, not Cloudflare R2.
+              Local MVP storage, not public static hosting.
             </p>
             <Button type="submit" disabled={isUploading}>
               <UploadCloud aria-hidden="true" />

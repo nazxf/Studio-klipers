@@ -242,7 +242,9 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
         return;
       }
 
-      setSuccessMessage(`${payload.clip?.title ?? "Clip"} queued as pending.`);
+      setSuccessMessage(
+        `${payload.clip?.title ?? "Clip"} queued. Run npm run worker:clips to process it.`,
+      );
       setClipTitle("");
       router.refresh();
     } catch {
@@ -303,7 +305,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
           <CardHeader>
             <CardTitle>Create pending clip</CardTitle>
             <CardDescription>
-              Queue a clip range for the local FFmpeg worker.
+              Queue a clip range for npm run worker:clips.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -418,14 +420,14 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle>Clips from this video</CardTitle>
-            <CardDescription>Pending jobs are ready for Phase 6 processing.</CardDescription>
+            <CardDescription>Pending jobs are ready for npm run worker:clips.</CardDescription>
           </CardHeader>
           <CardContent>
             {video.clips.length === 0 ? (
               <div className="rounded-md border border-dashed border-border bg-secondary/35 p-5">
                 <p className="text-sm font-semibold text-foreground">No clip jobs yet</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Choose a valid range and create a pending clip job.
+                  Choose a valid range, create a clip job, then run the local worker.
                 </p>
               </div>
             ) : (

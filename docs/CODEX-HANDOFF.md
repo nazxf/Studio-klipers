@@ -2,7 +2,7 @@
 
 ## Current Project Status
 
-Studio Klipers is a Next.js App Router local MVP for authenticated video clipping. The repository now has the polished dark creator-dashboard UI shell, Google/GitHub Auth.js login, PostgreSQL/Prisma models, local MP4 upload, protected video streaming, pending clip job creation, a local FFmpeg worker, protected clip output routes/UI, and Phase 7.1 hardening/security fixes.
+Studio Klipers is a Next.js App Router local MVP for authenticated video clipping. The repository now has the polished dark creator-dashboard UI shell, Google/GitHub Auth.js login, PostgreSQL/Prisma models, local MP4 upload, protected video streaming, clip job creation, a local FFmpeg worker, protected clip output routes/UI, hardening/security fixes, media preflight tooling, duration backfill tooling, final MVP copy polish, and updated local runbook documentation.
 
 Current working local MVP:
 
@@ -16,6 +16,9 @@ Current working local MVP:
 - Clip output is saved locally under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
 - Clip and processing job records become `COMPLETED`.
 - Duration validation is hardened with server-side `ffprobe` duration probing on upload.
+- `npm run check:media` verifies Node can spawn `ffmpeg` and `ffprobe`.
+- `npm run backfill:durations` safely fills missing `Video.durationSeconds` for existing local videos.
+- Pending clips tell the operator to run `npm run worker:clips`.
 - Worker errors are sanitized before user display/storage.
 - Source key shape validation is enforced for protected video streaming.
 
@@ -160,6 +163,28 @@ Current working local MVP:
 - `.env.example` labels R2/Redis variables as future optional production storage/queue, not active MVP requirements.
 - `docs/QA-CHECKLIST.md` now says OAuth should be tested through the real client buttons or CSRF-backed sign-in flow, not direct GET sign-in endpoints.
 
+### Phase 7.2 Local Readiness Hardening
+
+- Added shared local media toolchain helpers for `ffmpeg` and `ffprobe`.
+- Added optional `FFMPEG_PATH` and `FFPROBE_PATH` overrides while keeping PATH lookup as the default.
+- Added `npm run check:media`.
+- Media preflight verifies Node can spawn `ffmpeg` and `ffprobe` and read versions.
+- Preflight prints safe setup guidance when tools are missing.
+- Upload duration probing uses the shared ffprobe helper.
+- Worker FFmpeg spawn uses the shared ffmpeg resolver.
+- Added `npm run backfill:durations`.
+- Duration backfill finds user-independent `Video` rows with `durationSeconds: null` and `sourceKey != null`, resolves keys safely inside `uploads/`, probes duration with ffprobe, updates only `Video.durationSeconds`, skips missing files safely, and logs safe summary counts.
+- Backfill does not create clips or processing jobs.
+
+### MVP Final Polish And Documentation
+
+- Improved user-facing copy around upload, source duration detection, clip job creation, pending states, processing states, completed clips, and failed clips.
+- Replaced old phase-language with operator-language around the local worker.
+- UI now makes it clearer that pending clips require `npm run worker:clips`.
+- Kept the Taste-polished dark charcoal + neon lime UI intact.
+- Rewrote `README.md` as a local MVP setup and usage guide.
+- Updated `docs/CODEX-HANDOFF.md` and `docs/QA-CHECKLIST.md` for the final local MVP state.
+
 ## Confirmed Stack
 
 - Next.js App Router
@@ -177,6 +202,7 @@ Current working local MVP:
 - PostgreSQL
 - ESLint
 - Local filesystem storage for development/MVP
+- FFmpeg full build available locally through PATH or optional `FFMPEG_PATH` / `FFPROBE_PATH`
 
 ## Important Design Rules
 
@@ -240,9 +266,13 @@ Current working local MVP:
 - `server/clip-jobs.ts`
 - `server/clip-processing.ts`
 - `server/storage.ts`
+- `server/media-toolchain.ts`
 - `server/videos.ts`
 - `server/video-detail.ts`
 - `server/clips.ts`
+- `scripts/check-media.ts`
+- `scripts/backfill-video-durations.ts`
+- `scripts/media-tool-checks.ts`
 - `workers/clip-worker.ts`
 - `prisma/schema.prisma`
 - `prisma/migrations/*`
@@ -264,7 +294,7 @@ Current working local MVP:
 - Do not commit `.env.local`.
 - Do not commit `uploads/`.
 - Do not use Supabase.
-- Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, or Phase 7.1.
+- Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, Phase 7.1, Phase 7.2, or MVP final polish.
 - Do not reimplement upload/local storage, clip job creation, local worker processing, or implement Cloudflare R2, subtitles, payment, AI features, social feed, likes/comments, public profiles, team workspace, YouTube downloader, TikTok integration, or complex timeline editing outside the roadmap phase.
 - Do not add Cloudflare R2 SDK packages or make R2 an MVP requirement.
 - Do not expose `uploads/` as public static files.
@@ -275,7 +305,19 @@ Current working local MVP:
 
 ## Next Step
 
-Start a new Codex session and run a final QA pass for the local MVP flow. Do not add new features until QA is complete.
+The local MVP is ready for final manual operation testing. Do not add new product features before a clean local retest.
+
+Recommended local sequence:
+
+1. Run `npm run check:media`.
+2. Run `npm run dev`.
+3. Sign in with Google or GitHub.
+4. Upload a valid MP4.
+5. Open the video detail page and create a clip range.
+6. Run `npm run worker:clips`.
+7. Open `/clips`, preview the completed clip, and download it.
+
+If existing local videos have `durationSeconds: null`, run `npm run backfill:durations` after `npm run check:media`.
 
 Current local storage details:
 
@@ -303,11 +345,13 @@ Read AGENTS.md, IMPECCABLE.md, docs/DESIGN-SYSTEM.md, docs/IMPECCABLE-STYLE.md, 
 
 Use Taste as the primary visual design taste layer and Impeccable-style audit as the secondary quality gate.
 
-Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, or Phase 7.1.
+Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, Phase 7.1, Phase 7.2, or MVP final polish.
 
 Act as QA Engineer.
 
-Run the final local MVP QA pass only:
+Run the final local MVP operation pass only:
+- run `npm run check:media`,
+- run `npm run backfill:durations` only if existing local videos have missing duration metadata,
 - login with Google from the real `/login` client button flow,
 - login with GitHub from the real `/login` client button flow,
 - logout,
@@ -350,6 +394,7 @@ Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variable
 - `npm run lint` passes.
 - `npm run build` passes.
 - `npx prisma validate` passes.
+- `npm run check:media` passes when Node can spawn the local FFmpeg full build.
 - `npx prisma migrate dev --name add_video_clip_processing_models` passes.
 - `npx prisma generate` passes.
 - Prisma migration `init_auth` has been applied.
@@ -369,3 +414,4 @@ Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variable
 - Completed clip output is stored locally under `uploads/users/{userId}/clips/{clipId}/clip.mp4`.
 - Worker errors are sanitized before user display/storage.
 - Clip range validation rejects missing duration metadata and ranges beyond source duration.
+- README documents local setup, media preflight, duration backfill, storage paths, and the `npm run worker:clips` workflow.

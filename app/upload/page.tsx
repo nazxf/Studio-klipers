@@ -22,7 +22,7 @@ export default async function UploadPage({
       <PageHeader
         eyebrow="Local storage"
         title="Upload MP4"
-        description="Save development-only source videos to the local filesystem and register metadata in PostgreSQL."
+        description="Save an MP4 locally, detect its duration with ffprobe, and register metadata in PostgreSQL."
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2">

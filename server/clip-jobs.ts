@@ -61,7 +61,8 @@ export function getClipValidationMessage(errorCode?: string) {
     end_before_start: "End time must be greater than start time.",
     too_short: "Clip duration must be at least 3 seconds.",
     too_long: "Clip duration must be 5 minutes or shorter.",
-    duration_missing: "This source video needs duration metadata before clips can be created.",
+    duration_missing:
+      "This source video needs duration metadata. Run npm run backfill:durations or upload it again.",
     beyond_duration: "End time cannot be greater than the source video duration.",
     video_not_found: "The source video was not found for this workspace.",
     source_missing: "This video does not have a local source file registered.",

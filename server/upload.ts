@@ -66,7 +66,7 @@ export function getUploadErrorMessage(errorCode?: string) {
     missing_file: "Choose an MP4 file before uploading.",
     empty_file: "The selected file is empty.",
     too_large: "Use an MP4 up to 100 MB for local development storage.",
-    invalid_type: "Only MP4 files are supported in Phase 4A.",
+    invalid_type: "Only MP4 files are supported in the local MVP.",
     invalid_mp4: "The file does not look like a valid MP4 container.",
     duration_unknown:
       "The MP4 duration could not be detected. Verify local FFmpeg setup and try again.",
