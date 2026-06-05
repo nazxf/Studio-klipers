@@ -97,6 +97,14 @@ enum SubtitleSource {
   AUTO
 }
 
+enum CaptionPresetKey {
+  CREATOR_CLASSIC
+  LIME_PUNCH
+  GAMING_BOLD
+  CLEAN_LOWER
+  CINEMATIC_POP
+}
+
 model Video {
   id              String          @id @default(cuid())
   userId          String          @map("user_id")
@@ -153,6 +161,8 @@ model SubtitleTrack {
   languageProbability Float?              @map("language_probability")
   engine              String?
   modelName           String?             @map("model_name")
+  presetKey           CaptionPresetKey     @default(CREATOR_CLASSIC) @map("preset_key")
+  presetStyle         Json?                @map("preset_style")
   errorMessage        String?             @map("error_message") @db.Text
   generatedAt         DateTime?           @map("generated_at")
   createdAt           DateTime            @default(now()) @map("created_at")
