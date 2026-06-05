@@ -18,6 +18,8 @@ model User {
   videos        Video[]
   clips         Clip[]
   processingJobs ProcessingJob[]
+  subtitleTracks SubtitleTrack[]
+  subtitleSegments SubtitleSegment[]
 
   @@map("users")
 }
@@ -81,6 +83,18 @@ enum JobStatus {
 
 enum JobType {
   CREATE_CLIP
+  GENERATE_SUBTITLES
+}
+
+enum SubtitleTrackStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum SubtitleSource {
+  AUTO
 }
 
 model Video {
@@ -121,11 +135,58 @@ model Clip {
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   video           Video           @relation(fields: [videoId], references: [id], onDelete: Cascade)
   processingJobs  ProcessingJob[]
+  subtitleTrack   SubtitleTrack?
 
   @@index([userId, createdAt])
   @@index([userId, status])
   @@index([videoId])
   @@map("clips")
+}
+
+model SubtitleTrack {
+  id                  String              @id @default(cuid())
+  userId              String              @map("user_id")
+  clipId              String              @unique @map("clip_id")
+  status              SubtitleTrackStatus @default(PENDING)
+  source              SubtitleSource      @default(AUTO)
+  languageCode        String?             @map("language_code")
+  languageProbability Float?              @map("language_probability")
+  engine              String?
+  modelName           String?             @map("model_name")
+  errorMessage        String?             @map("error_message") @db.Text
+  generatedAt         DateTime?           @map("generated_at")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clip                Clip                @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  segments            SubtitleSegment[]
+
+  @@index([userId, status])
+  @@index([status])
+  @@map("subtitle_tracks")
+}
+
+model SubtitleSegment {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  trackId       String        @map("track_id")
+  startSeconds  Float         @map("start_seconds")
+  endSeconds    Float         @map("end_seconds")
+  text          String        @db.Text
+  generatedText String?       @map("generated_text") @db.Text
+  confidence    Float?
+  words         Json?
+  isEdited      Boolean       @default(false) @map("is_edited")
+  sortOrder     Int           @map("sort_order")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track         SubtitleTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([trackId, sortOrder])
+  @@index([trackId, startSeconds])
+  @@map("subtitle_segments")
 }
 
 model ProcessingJob {

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint .",
     "worker:clips": "tsx workers/clip-worker.ts",
+    "worker:subtitles": "tsx workers/subtitle-worker.ts",
     "check:media": "tsx scripts/check-media.ts",
+    "check:transcription": "tsx scripts/check-transcription.ts",
     "backfill:durations": "tsx scripts/backfill-video-durations.ts"
   },
   "dependencies": {

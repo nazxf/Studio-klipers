@@ -17,6 +17,13 @@ uploads/
 .env.local
 .env.*.local
 
+# Local Python/model caches
+.venv/
+venv/
+.cache/
+.huggingface/
+model-cache/
+models/
 
 # Logs
 npm-debug.log*
