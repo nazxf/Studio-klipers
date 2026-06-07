@@ -121,3 +121,85 @@ export function probeMp4DurationSeconds(filePath: string) {
     });
   });
 }
+
+export function probeVideoDimensions(filePath: string) {
+  const args = [
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=width,height",
+    "-of",
+    "csv=s=x:p=0",
+    filePath,
+  ];
+
+  return new Promise<{ height: number; width: number }>((resolve, reject) => {
+    const ffprobe = spawn("ffprobe", args, {
+      env: getMediaToolSpawnEnv("ffprobe"),
+      windowsHide: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    let isSettled = false;
+
+    const timeout = setTimeout(() => {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      ffprobe.kill();
+      reject(new Error("ffprobe timed out while reading video dimensions."));
+    }, FFPROBE_TIMEOUT_MS);
+
+    ffprobe.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+
+    ffprobe.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+
+    ffprobe.on("error", (error) => {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      clearTimeout(timeout);
+      reject(error);
+    });
+
+    ffprobe.on("close", (exitCode) => {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      clearTimeout(timeout);
+
+      if (exitCode !== 0) {
+        reject(new Error(stderr.trim() || "ffprobe could not read video dimensions."));
+        return;
+      }
+
+      const [widthValue, heightValue] = stdout.trim().split("x");
+      const width = Number(widthValue);
+      const height = Number(heightValue);
+
+      if (
+        !Number.isInteger(width) ||
+        !Number.isInteger(height) ||
+        width <= 0 ||
+        height <= 0
+      ) {
+        reject(new Error("ffprobe returned invalid video dimensions."));
+        return;
+      }
+
+      resolve({ height, width });
+    });
+  });
+}

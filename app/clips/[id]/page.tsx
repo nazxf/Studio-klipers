@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { CaptionPresetSelector } from "@/components/clips/caption-preset-selector";
+import { CaptionRenderPanel } from "@/components/clips/caption-render-panel";
 import { ClipSubtitlePreview } from "@/components/clips/clip-subtitle-preview";
 import { ClipStatusRefresh } from "@/components/clips/clip-status-refresh";
 import { SubtitleEditor } from "@/components/clips/subtitle-editor";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { DEFAULT_CAPTION_PRESET_KEY } from "@/lib/caption-presets";
+import { getLatestCaptionRenderForCompletedClipForUser } from "@/server/caption-renders";
 import { requireCurrentUser } from "@/server/current-user";
 import { getClipForUser } from "@/server/clips";
 import { getSubtitleTrackForCompletedClipForUser } from "@/server/subtitles";
@@ -168,6 +170,10 @@ export default async function ClipDetailPage({
     clipId: id,
     userId: user.id,
   });
+  const latestCaptionRender = await getLatestCaptionRenderForCompletedClipForUser({
+    clipId: id,
+    userId: user.id,
+  });
 
   if (!clip) {
     notFound();
@@ -176,7 +182,9 @@ export default async function ClipDetailPage({
   const shouldRefreshClip = clip.status === "PENDING" || clip.status === "PROCESSING";
   const shouldRefreshSubtitles =
     subtitleTrack?.status === "PENDING" || subtitleTrack?.status === "PROCESSING";
-  const isRefreshing = shouldRefreshClip || shouldRefreshSubtitles;
+  const shouldRefreshCaptionRender =
+    latestCaptionRender?.status === "PENDING" || latestCaptionRender?.status === "PROCESSING";
+  const isRefreshing = shouldRefreshClip || shouldRefreshSubtitles || shouldRefreshCaptionRender;
   const canUseOutput = clip.status === "COMPLETED" && clip.hasOutput;
   const statusCopy = getStatusCopy(clip.status);
   const progress =
@@ -185,6 +193,8 @@ export default async function ClipDetailPage({
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
   const failedMessage = clip.errorMessage ?? clip.latestJob?.errorMessage;
   const activeCaptionPresetKey = subtitleTrack?.presetKey ?? DEFAULT_CAPTION_PRESET_KEY;
+  const canCreateCaptionRender =
+    subtitleTrack?.status === "READY" && subtitleTrack.segments.length > 0;
 
   return (
     <DashboardShell user={user}>
@@ -313,6 +323,14 @@ export default async function ClipDetailPage({
       ) : null}
 
       {canUseOutput ? <SubtitleEditor clipId={clip.id} track={subtitleTrack} /> : null}
+
+      {canUseOutput ? (
+        <CaptionRenderPanel
+          canCreate={canCreateCaptionRender}
+          clipId={clip.id}
+          render={latestCaptionRender}
+        />
+      ) : null}
 
       {clip.status === "FAILED" && failedMessage ? (
         <section className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-5">

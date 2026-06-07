@@ -19,6 +19,7 @@ import {
 
 const MAX_CAPTURED_TRANSCRIPTION_OUTPUT = 20_000;
 const TRANSCRIPTION_TIMEOUT_MS = 30 * 60 * 1000;
+const MAX_SUBTITLE_JOB_ATTEMPTS = 3;
 
 type ClaimedSubtitleJob = {
   clipId: string | null;
@@ -140,6 +141,9 @@ async function claimNextPendingSubtitleJob(): Promise<ClaimedSubtitleJob | null>
         id: true,
       },
       where: {
+        attempts: {
+          lt: MAX_SUBTITLE_JOB_ATTEMPTS,
+        },
         status: JobStatus.PENDING,
         type: JobType.GENERATE_SUBTITLES,
       },
@@ -161,8 +165,12 @@ async function claimNextPendingSubtitleJob(): Promise<ClaimedSubtitleJob | null>
         status: JobStatus.PROCESSING,
       },
       where: {
+        attempts: {
+          lt: MAX_SUBTITLE_JOB_ATTEMPTS,
+        },
         id: pendingJob.id,
         status: JobStatus.PENDING,
+        type: JobType.GENERATE_SUBTITLES,
       },
     });
 

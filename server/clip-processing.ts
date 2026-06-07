@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { mkdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 
@@ -10,10 +9,12 @@ import {
   getRawClipProcessingErrorMessage,
   getSafeClipProcessingErrorMessage,
 } from "./clip-errors";
-import { getFfmpegCommand } from "./media-toolchain";
+import { runFfmpegProcess } from "./ffmpeg-runner";
 import { getLocalClipOutputKey, resolveLocalUploadKey } from "./storage";
 
-const MAX_CAPTURED_FFMPEG_OUTPUT = 5000;
+const CLIP_FFMPEG_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_CAPTURED_FFMPEG_OUTPUT = 5_000;
+const MAX_CLIP_JOB_ATTEMPTS = 3;
 
 type ClaimedJob = {
   clipId: string | null;
@@ -38,16 +39,6 @@ type WorkerResult =
       status: "failed";
     };
 
-function appendCapturedOutput(currentOutput: string, nextChunk: Buffer) {
-  const combinedOutput = currentOutput + nextChunk.toString("utf8");
-
-  if (combinedOutput.length <= MAX_CAPTURED_FFMPEG_OUTPUT) {
-    return combinedOutput;
-  }
-
-  return combinedOutput.slice(-MAX_CAPTURED_FFMPEG_OUTPUT);
-}
-
 async function assertFileExists(filePath: string, label: string) {
   const fileStat = await stat(filePath);
 
@@ -69,6 +60,9 @@ async function claimNextPendingClipJob(): Promise<ClaimedJob | null> {
         id: true,
       },
       where: {
+        attempts: {
+          lt: MAX_CLIP_JOB_ATTEMPTS,
+        },
         status: JobStatus.PENDING,
         type: JobType.CREATE_CLIP,
       },
@@ -90,8 +84,12 @@ async function claimNextPendingClipJob(): Promise<ClaimedJob | null> {
         status: JobStatus.PROCESSING,
       },
       where: {
+        attempts: {
+          lt: MAX_CLIP_JOB_ATTEMPTS,
+        },
         id: pendingJob.id,
         status: JobStatus.PENDING,
+        type: JobType.CREATE_CLIP,
       },
     });
 
@@ -170,34 +168,12 @@ function runFfmpeg({
     outputPath,
   ];
 
-  return new Promise<void>((resolve, reject) => {
-    const ffmpeg = spawn(/*turbopackIgnore: true*/ getFfmpegCommand(), args, {
-      windowsHide: true,
-    });
-    let stderr = "";
-
-    ffmpeg.stderr.on("data", (chunk: Buffer) => {
-      stderr = appendCapturedOutput(stderr, chunk);
-    });
-
-    ffmpeg.on("error", (error) => {
-      reject(error);
-    });
-
-    ffmpeg.on("close", (exitCode) => {
-      if (exitCode === 0) {
-        resolve();
-        return;
-      }
-
-      reject(
-        new Error(
-          `FFmpeg failed with exit code ${exitCode ?? "unknown"}: ${
-            stderr.trim() || "no stderr output"
-          }`,
-        ),
-      );
-    });
+  return runFfmpegProcess({
+    args,
+    failureMessage: "FFmpeg failed",
+    maxCapturedStderr: MAX_CAPTURED_FFMPEG_OUTPUT,
+    timeoutMessage: "FFmpeg clip processing timed out",
+    timeoutMs: CLIP_FFMPEG_TIMEOUT_MS,
   });
 }
 

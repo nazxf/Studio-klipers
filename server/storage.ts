@@ -10,6 +10,18 @@ export function getLocalClipOutputKey(userId: string, clipId: string) {
   return `users/${userId}/clips/${clipId}/clip.mp4`;
 }
 
+export function getLocalCaptionRenderOutputKey({
+  clipId,
+  renderId,
+  userId,
+}: {
+  clipId: string;
+  renderId: string;
+  userId: string;
+}) {
+  return `users/${userId}/clips/${clipId}/caption-renders/${renderId}/captioned.mp4`;
+}
+
 export function resolveLocalUploadKey(storageKey: string) {
   const normalizedKey = storageKey.replace(/\\/g, "/");
   const segments = normalizedKey.split("/");
