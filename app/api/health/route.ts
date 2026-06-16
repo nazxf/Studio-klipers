@@ -13,6 +13,8 @@ type CheckResult = {
   error?: string;
 };
 
+const isProduction = process.env.NODE_ENV === "production";
+
 async function checkDatabase(): Promise<CheckResult> {
   const start = Date.now();
 
@@ -21,7 +23,11 @@ async function checkDatabase(): Promise<CheckResult> {
     return { ok: true, latencyMs: Date.now() - start };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { ok: false, latencyMs: Date.now() - start, error: message };
+    return {
+      ok: false,
+      latencyMs: Date.now() - start,
+      error: isProduction ? "unavailable" : message,
+    };
   }
 }
 
@@ -37,7 +43,11 @@ async function checkFfmpeg(): Promise<CheckResult> {
     return { ok: true, latencyMs: Date.now() - start };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { ok: false, latencyMs: Date.now() - start, error: message };
+    return {
+      ok: false,
+      latencyMs: Date.now() - start,
+      error: isProduction ? "unavailable" : message,
+    };
   }
 }
 

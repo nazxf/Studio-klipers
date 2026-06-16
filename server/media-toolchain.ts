@@ -169,6 +169,10 @@ export function getFfmpegCommand() {
   return getMediaToolCommand("ffmpeg");
 }
 
+export function getFfmpegSpawnEnv() {
+  return getMediaToolSpawnEnv("ffmpeg");
+}
+
 export function getFfprobeCommand() {
   return getMediaToolCommand("ffprobe");
 }

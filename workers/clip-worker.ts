@@ -14,23 +14,25 @@ import { prisma } from "../lib/prisma";
 import { startClipWorkerLoop, stopClipWorkerLoop } from "../server/clip-worker-loop";
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const stop = (signal: string) => {
-    console.log(`Received ${signal}.`);
-    stopClipWorkerLoop();
-  };
-
-  process.once("SIGINT", () => stop("SIGINT"));
-  process.once("SIGTERM", () => stop("SIGTERM"));
-
-  startClipWorkerLoop();
-
-  // Keep the process alive until the worker loop finishes. The loop uses
-  // unref'd timers so the process will exit once the loop stops.
-  // We add a keep-alive interval that we clear on shutdown.
+  // Keep the process alive until the worker loop finishes.
   const keepAlive = setInterval(() => {}, 60_000);
 
-  process.once("beforeExit", async () => {
+  async function shutdown(signal: string) {
+    console.log(`Received ${signal}. Stopping worker loop...`);
+    stopClipWorkerLoop();
     clearInterval(keepAlive);
-    await prisma.$disconnect();
-  });
+
+    // Give the loop a moment to finish its current tick, then disconnect.
+    // Node.js does not await async `beforeExit` handlers, so we handle
+    // cleanup here in the signal handler instead.
+    setTimeout(async () => {
+      await prisma.$disconnect().catch(() => undefined);
+      process.exit(0);
+    }, 1_000);
+  }
+
+  process.once("SIGINT", () => shutdown("SIGINT"));
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+
+  startClipWorkerLoop();
 }

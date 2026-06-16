@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 
-import { getFfmpegCommand } from "@/server/media-toolchain";
+import { getFfmpegCommand, getFfmpegSpawnEnv } from "@/server/media-toolchain";
 
 const DEFAULT_FFMPEG_KILL_GRACE_MS = 5_000;
 
@@ -44,6 +44,7 @@ export function runFfmpegProcess({
   return new Promise<void>((resolve, reject) => {
     const ffmpeg = spawn(/*turbopackIgnore: true*/ getFfmpegCommand(), args, {
       cwd,
+      env: getFfmpegSpawnEnv(),
       stdio: ["ignore", "ignore", "pipe"],
       windowsHide: true,
     });

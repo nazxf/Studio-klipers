@@ -21,14 +21,21 @@ export async function register() {
       return;
     }
 
-    const { startClipWorkerLoop, stopClipWorkerLoop } = await import(
-      "./server/clip-worker-loop"
-    );
+    try {
+      const { startClipWorkerLoop, stopClipWorkerLoop } = await import(
+        "./server/clip-worker-loop"
+      );
 
-    startClipWorkerLoop();
+      startClipWorkerLoop();
 
-    // Graceful shutdown when Next.js process exits.
-    process.once("SIGINT", () => stopClipWorkerLoop());
-    process.once("SIGTERM", () => stopClipWorkerLoop());
+      // Graceful shutdown when Next.js process exits.
+      process.once("SIGINT", () => stopClipWorkerLoop());
+      process.once("SIGTERM", () => stopClipWorkerLoop());
+    } catch (error) {
+      console.error(
+        "[instrumentation] Failed to start embedded clip worker:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 }

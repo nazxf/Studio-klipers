@@ -55,6 +55,9 @@ export function getClipValidationMessage(errorCode?: string) {
   return messages[errorCode];
 }
 
+/** Epsilon tolerance for floating-point duration comparison (10ms). */
+const DURATION_EPSILON = 0.01;
+
 export async function createPendingClipJob({
   endSeconds,
   startSeconds,
@@ -65,39 +68,42 @@ export async function createPendingClipJob({
   userId: string;
   videoId: string;
 }) {
-  const video = await prisma.video.findFirst({
-    where: {
-      id: videoId,
-      userId,
-    },
-    select: {
-      id: true,
-      title: true,
-      durationSeconds: true,
-      sourceKey: true,
-    },
-  });
-
-  if (!video) {
-    throw new ClipValidationError("video_not_found");
-  }
-
-  if (!video.sourceKey) {
-    throw new ClipValidationError("source_missing");
-  }
-
-  if (video.durationSeconds === null) {
-    throw new ClipValidationError("duration_missing");
-  }
-
-  if (endSeconds > video.durationSeconds) {
-    throw new ClipValidationError("beyond_duration");
-  }
-
-  const durationSeconds =
-    Math.round((endSeconds - startSeconds) * 1000) / 1000;
-
   return prisma.$transaction(async (tx) => {
+    // Video lookup inside transaction to prevent TOCTOU race (video deleted
+    // between lookup and clip creation).
+    const video = await tx.video.findFirst({
+      where: {
+        id: videoId,
+        userId,
+        status: "READY",
+      },
+      select: {
+        id: true,
+        title: true,
+        durationSeconds: true,
+        sourceKey: true,
+      },
+    });
+
+    if (!video) {
+      throw new ClipValidationError("video_not_found");
+    }
+
+    if (!video.sourceKey) {
+      throw new ClipValidationError("source_missing");
+    }
+
+    if (video.durationSeconds === null) {
+      throw new ClipValidationError("duration_missing");
+    }
+
+    if (endSeconds > video.durationSeconds + DURATION_EPSILON) {
+      throw new ClipValidationError("beyond_duration");
+    }
+
+    const durationSeconds =
+      Math.round((endSeconds - startSeconds) * 1000) / 1000;
+
     const clip = await tx.clip.create({
       data: {
         userId,

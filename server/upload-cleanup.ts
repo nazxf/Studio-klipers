@@ -74,13 +74,10 @@ async function cleanupStaleTempUploads(
  * Best-effort one-shot cleanup invoked on first module load. Exposed so callers
  * can `void` the returned promise without awaiting it.
  */
-export function scheduleStaleTempUploadCleanup(): void {
-  if (cleanupRan) {
-    return;
-  }
+/** Re-run cleanup every hour to catch stale files from long-running servers. */
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
-  cleanupRan = true;
-
+function runCleanup() {
   cleanupStaleTempUploads()
     .then((summary) => {
       if (summary.removed > 0) {
@@ -92,4 +89,17 @@ export function scheduleStaleTempUploadCleanup(): void {
     .catch((error) => {
       console.warn("[upload-cleanup] sweep failed", error);
     });
+}
+
+export function scheduleStaleTempUploadCleanup(): void {
+  if (cleanupRan) {
+    return;
+  }
+
+  cleanupRan = true;
+
+  // Run immediately on first call, then periodically.
+  runCleanup();
+  const interval = setInterval(runCleanup, CLEANUP_INTERVAL_MS);
+  interval.unref(); // Don't prevent process exit.
 }

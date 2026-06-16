@@ -251,16 +251,17 @@ function runFfmpeg({
   sourcePath: string;
   startSeconds: number;
 }) {
-  // Accurate seek: -ss AFTER -i forces decode-up-to-start so the clip begins
-  // exactly at the user-selected timestamp instead of snapping to the nearest
-  // keyframe. Re-encode video with libx264 (veryfast/CRF 20) and audio with AAC
-  // so the resulting MP4 is web-friendly and faststart-streamable.
+  // Input-level seek: -ss BEFORE -i uses fast keyframe-based seeking to jump
+  // near the start point, then -i decodes from there. Since we re-encode with
+  // libx264, frame-accuracy is preserved (the encoder starts at the exact
+  // timestamp). This is orders of magnitude faster than decode-from-start for
+  // long videos. -t specifies the output duration relative to the seek point.
   const args = [
     "-y",
-    "-i",
-    sourcePath,
     "-ss",
     String(startSeconds),
+    "-i",
+    sourcePath,
     "-t",
     String(durationSeconds),
     "-c:v",
