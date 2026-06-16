@@ -19,11 +19,11 @@ export function PageHeader({
     <div className={cn("flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="max-w-3xl">
         {eyebrow ? (
-          <p className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+          <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="break-words text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           {title}
         </h1>
         {description ? (

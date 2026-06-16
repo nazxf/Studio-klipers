@@ -71,7 +71,7 @@ export function ProcessingList({ jobs }: { jobs: ProcessingJobItem[] }) {
                     <p className="truncate text-sm font-semibold text-foreground">{job.title}</p>
                     <Badge variant={getBadgeVariant(job.status)}>{job.status}</Badge>
                   </div>
-                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">{job.detail}</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">{job.detail}</p>
                   <Progress className="mt-3" value={job.progress} />
                 </div>
               </div>

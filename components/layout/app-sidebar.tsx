@@ -95,7 +95,7 @@ export function AppSidebar() {
           </div>
           <div>
             <p className="text-sm font-semibold tracking-tight text-foreground">Local MVP storage</p>
-            <p className="font-mono text-[11px] text-muted-foreground">Local MP4 intake</p>
+            <p className="font-mono text-xs text-muted-foreground">Local MP4 intake</p>
           </div>
         </div>
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">

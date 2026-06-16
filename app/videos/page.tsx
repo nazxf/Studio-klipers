@@ -100,7 +100,7 @@ export default async function VideosPage() {
                           </h2>
                           <Badge variant={getVideoStatusVariant(video.status)}>{video.status}</Badge>
                         </div>
-                        <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
                           {video.fileName}
                         </p>
                       </div>

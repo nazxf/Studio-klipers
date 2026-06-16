@@ -235,15 +235,17 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
           {isUploading || uploadState === "success" ? (
             <div className="rounded-md border border-primary/20 bg-primary/10 p-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                <p className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
                   {uploadState === "success" ? (
-                    <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
+                    <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
                   ) : (
-                    <UploadCloud className="size-4 text-primary" aria-hidden="true" />
+                    <UploadCloud className="size-4 shrink-0 text-primary" aria-hidden="true" />
                   )}
-                  {uploadState === "success" ? "Upload saved" : "Uploading locally"}
+                  <span className="truncate">
+                    {uploadState === "success" ? "Upload saved" : "Uploading locally"}
+                  </span>
                 </p>
-                <span className="font-mono text-[11px] text-muted-foreground">{progress}%</span>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">{progress}%</span>
               </div>
               <Progress value={progress} className="mt-3" />
             </div>

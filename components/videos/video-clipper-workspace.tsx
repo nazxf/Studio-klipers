@@ -355,7 +355,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                 <label htmlFor="start-seconds" className="text-sm font-semibold text-foreground">
                   Start time
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Input
                     id="start-seconds"
                     min={0}
@@ -365,8 +365,9 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                     className="min-w-0"
                     onChange={(event) => setStartValue(event.target.value)}
                   />
-                  <Button type="button" variant="secondary" onClick={setStartHere}>
-                    Set start here
+                  <Button type="button" variant="secondary" className="shrink-0" onClick={setStartHere}>
+                    <span className="min-[400px]:hidden">Set start</span>
+                    <span className="hidden min-[400px]:inline">Set start here</span>
                   </Button>
                 </div>
               </div>
@@ -375,7 +376,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                 <label htmlFor="end-seconds" className="text-sm font-semibold text-foreground">
                   End time
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Input
                     id="end-seconds"
                     min={0}
@@ -385,8 +386,9 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                     className="min-w-0"
                     onChange={(event) => setEndValue(event.target.value)}
                   />
-                  <Button type="button" variant="secondary" onClick={setEndHere}>
-                    Set end here
+                  <Button type="button" variant="secondary" className="shrink-0" onClick={setEndHere}>
+                    <span className="min-[400px]:hidden">Set end</span>
+                    <span className="hidden min-[400px]:inline">Set end here</span>
                   </Button>
                 </div>
               </div>
@@ -398,7 +400,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                   <Timer className="size-4 text-primary" aria-hidden="true" />
                   Selection
                 </p>
-                <span className="font-mono text-[11px] text-muted-foreground">
+                <span className="font-mono text-xs text-muted-foreground">
                   {formatSeconds(Math.max(selectedDuration, 0))}
                 </span>
               </div>
@@ -473,7 +475,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                           </p>
                           <Badge variant={getStatusVariant(clip.status)}>{clip.status}</Badge>
                         </div>
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                        <p className="mt-1 font-mono text-xs text-muted-foreground">
                           {formatSeconds(clip.startSeconds)} to {formatSeconds(clip.endSeconds)}
                         </p>
                       </div>
@@ -498,7 +500,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
               <FileVideo2 className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">File</p>
-                <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
                   {video.fileName}
                 </p>
               </div>

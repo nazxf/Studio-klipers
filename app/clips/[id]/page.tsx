@@ -107,15 +107,15 @@ function getStatusCopy(status: string) {
 
   return {
     title: "Queued",
-    description: "This clip is waiting for npm run worker:clips.",
+    description: "This clip is queued and will be processed shortly.",
   };
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border/70 py-3 last:border-b-0">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="max-w-[68%] text-right text-sm font-semibold text-foreground">{value}</dd>
+      <dt className="shrink-0 text-sm text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-right text-sm font-semibold text-foreground">{value}</dd>
     </div>
   );
 }
@@ -346,7 +346,7 @@ export default async function ClipDetailPage({
               <FileVideo2 className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">File</p>
-                <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
                   {clip.video.fileName}
                 </p>
               </div>
