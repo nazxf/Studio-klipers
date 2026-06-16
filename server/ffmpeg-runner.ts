@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 
-import { getFfmpegCommand } from "./media-toolchain";
+import { getFfmpegCommand } from "@/server/media-toolchain";
 
-export const DEFAULT_FFMPEG_KILL_GRACE_MS = 5_000;
+const DEFAULT_FFMPEG_KILL_GRACE_MS = 5_000;
 
 type RunFfmpegProcessOptions = {
   args: string[];

@@ -9,46 +9,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatBytes, formatDate } from "@/lib/formatters";
+import { getVideoStatusVariant } from "@/lib/status-helpers";
 import { requireCurrentUser } from "@/server/current-user";
 import { listVideosForUser } from "@/server/videos";
-
-function formatBytes(sizeBytes: string) {
-  const size = Number(sizeBytes);
-
-  if (!Number.isFinite(size) || size <= 0) {
-    return "0 MB";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  let value = size;
-  let unitIndex = 0;
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function getVideoStatusVariant(status: string) {
-  if (status === "READY") {
-    return "success";
-  }
-
-  if (status === "FAILED") {
-    return "error";
-  }
-
-  return "secondary";
-}
 
 export default async function VideosPage() {
   const user = await requireCurrentUser("/videos");

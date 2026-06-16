@@ -194,32 +194,4 @@ export async function probeMp4DurationSeconds(filePath: string) {
   return Math.round(durationSeconds * 1000) / 1000;
 }
 
-export async function probeVideoDimensions(filePath: string) {
-  const args = [
-    "-v",
-    "error",
-    "-select_streams",
-    "v:0",
-    "-show_entries",
-    "stream=width,height",
-    "-of",
-    "csv=s=x:p=0",
-    filePath,
-  ];
 
-  const stdout = await runFfprobe(args, "ffprobe timed out while reading video dimensions");
-  const [widthValue, heightValue] = stdout.trim().split("x");
-  const width = Number(widthValue);
-  const height = Number(heightValue);
-
-  if (
-    !Number.isInteger(width) ||
-    !Number.isInteger(height) ||
-    width <= 0 ||
-    height <= 0
-  ) {
-    throw new Error("ffprobe returned invalid video dimensions.");
-  }
-
-  return { height, width };
-}

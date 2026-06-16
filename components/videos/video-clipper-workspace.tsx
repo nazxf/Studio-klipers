@@ -7,19 +7,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   AlertCircle,
-  CalendarClock,
-  Clock3,
-  FileVideo2,
-  HardDrive,
   Play,
   Scissors,
   Timer,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { VideoClipList } from "@/components/videos/video-clip-list";
+import { VideoSourceMetadata } from "@/components/videos/video-source-metadata";
+import { formatSeconds } from "@/lib/formatters";
 import { MAX_CLIP_TITLE_LENGTH } from "@/lib/validation";
 
 type VideoClip = {
@@ -110,61 +108,7 @@ const clipFormSchema = z
 
 type ClipFormValues = z.input<typeof clipFormSchema>;
 
-function formatBytes(sizeBytes: string) {
-  const size = Number(sizeBytes);
 
-  if (!Number.isFinite(size) || size <= 0) {
-    return "0 MB";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  let value = size;
-  let unitIndex = 0;
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatSeconds(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds < 0) {
-    return "0:00";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round((seconds % 60) * 10) / 10;
-  const paddedSeconds = remainingSeconds
-    .toFixed(remainingSeconds % 1 === 0 ? 0 : 1)
-    .padStart(2, "0");
-
-  return `${minutes}:${paddedSeconds}`;
-}
-
-function getStatusVariant(status: string) {
-  if (status === "COMPLETED") {
-    return "success";
-  }
-
-  if (status === "PROCESSING") {
-    return "default";
-  }
-
-  if (status === "FAILED") {
-    return "error";
-  }
-
-  return "warning";
-}
 
 function parseSeconds(value: string) {
   if (value.trim() === "") {
@@ -542,89 +486,13 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.72fr_0.28fr]">
-        <Card className="shadow-none">
-          <CardHeader>
-            <CardTitle>Clips from this video</CardTitle>
-            <CardDescription>Pending jobs are ready for npm run worker:clips.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {video.clips.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border bg-secondary/35 p-5">
-                <p className="text-sm font-semibold text-foreground">No clip jobs yet</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Choose a valid range, create a clip job, then run the local worker.
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {video.clips.map((clip) => (
-                  <div
-                    key={clip.id}
-                    className="rounded-md border border-border bg-secondary/40 p-4 transition-colors duration-150 hover:border-primary/20 hover:bg-secondary/55"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {clip.title}
-                          </p>
-                          <Badge variant={getStatusVariant(clip.status)}>{clip.status}</Badge>
-                        </div>
-                        <p className="mt-1 font-mono text-xs text-muted-foreground">
-                          {formatSeconds(clip.startSeconds)} to {formatSeconds(clip.endSeconds)}
-                        </p>
-                      </div>
-                      <div className="grid gap-1 text-sm text-muted-foreground sm:text-right">
-                        <p>{formatSeconds(clip.durationSeconds)}</p>
-                        <p className="text-xs">{formatDate(clip.createdAt)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-none">
-          <CardHeader>
-            <CardTitle>Source metadata</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-3">
-              <FileVideo2 className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">File</p>
-                <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                  {video.fileName}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <HardDrive className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Size</p>
-                <p className="mt-1 text-sm text-muted-foreground">{formatBytes(video.sizeBytes)}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Clock3 className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Duration</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {durationLimit !== null ? formatSeconds(durationLimit) : "Detected in player"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <CalendarClock className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Uploaded</p>
-                <p className="mt-1 text-sm text-muted-foreground">{formatDate(video.createdAt)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <VideoClipList clips={video.clips} />
+        <VideoSourceMetadata
+          fileName={video.fileName}
+          sizeBytes={video.sizeBytes}
+          durationSeconds={video.durationSeconds}
+          createdAt={video.createdAt}
+        />
       </section>
     </div>
   );

@@ -3,13 +3,13 @@ import path from "node:path";
 
 import { ClipStatus, JobStatus, JobType, Prisma } from "@prisma/client";
 
-import { prisma } from "../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import {
   getRawClipProcessingErrorMessage,
   getSafeClipProcessingErrorMessage,
-} from "./clip-errors";
-import { runFfmpegProcess } from "./ffmpeg-runner";
-import { getLocalClipOutputKey, resolveLocalUploadKey } from "./storage";
+} from "@/server/clip-errors";
+import { runFfmpegProcess } from "@/server/ffmpeg-runner";
+import { getLocalClipOutputKey, resolveLocalUploadKey } from "@/server/storage";
 
 const CLIP_FFMPEG_TIMEOUT_MS = 10 * 60 * 1000;
 const STALE_CLIP_JOB_MS = CLIP_FFMPEG_TIMEOUT_MS + 60_000;

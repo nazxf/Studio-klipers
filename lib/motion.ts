@@ -48,18 +48,6 @@ export const staggerItem: Variants = {
   },
 };
 
-export const subtleHover = {
-  y: -2,
-  transition: spring,
-};
-
-export const sidebarItem: Variants = {
-  inactive: { opacity: 0.86 },
-  active: {
-    opacity: 1,
-    transition: { duration: 0.16, ease: easeOut },
-  },
-};
 
 export const statusPulse: Variants = {
   idle: { opacity: 0.72, scale: 1 },

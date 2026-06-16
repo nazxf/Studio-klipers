@@ -9,27 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { formatBytes } from "@/lib/formatters";
 
 const MAX_CLIENT_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 type UploadState = "idle" | "ready" | "uploading" | "success" | "error";
-
-function formatBytes(sizeBytes: number) {
-  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
-    return "0 MB";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  let value = sizeBytes;
-  let unitIndex = 0;
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
 
 function getClientFileError(file: File | null) {
   if (!file) {

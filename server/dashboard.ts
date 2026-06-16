@@ -1,15 +1,7 @@
 import { JobStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-
-function formatSeconds(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round((seconds % 60) * 10) / 10;
-
-  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds
-    .toFixed(remainingSeconds % 1 === 0 ? 0 : 1)
-    .padStart(2, "0")}`;
-}
+import { formatTimestamp } from "@/lib/formatters";
 
 export async function getDashboardStats(userId: string) {
   const [videoCount, clipCount, processingCount, readyClipCount] = await prisma.$transaction([
@@ -71,7 +63,7 @@ export async function getRecentProcessingJobs(userId: string) {
     id: job.id,
     title: job.clip?.title ?? job.video.title ?? job.video.fileName,
     detail: job.clip
-      ? `${formatSeconds(job.clip.startSeconds)} to ${formatSeconds(job.clip.endSeconds)}`
+      ? `${formatTimestamp(job.clip.startSeconds)} to ${formatTimestamp(job.clip.endSeconds)}`
       : "Clip range not assigned yet",
     status: job.status,
     progress: job.progress,

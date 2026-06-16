@@ -10,61 +10,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatBytes, formatDate, formatSeconds } from "@/lib/formatters";
+import { getClipStatusVariant } from "@/lib/status-helpers";
 import { requireCurrentUser } from "@/server/current-user";
 import { listClipsForUser } from "@/server/clips";
-
-function formatSeconds(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
-
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
-function formatBytes(sizeBytes: string | null) {
-  if (!sizeBytes) {
-    return "Output pending";
-  }
-
-  const size = Number(sizeBytes);
-
-  if (!Number.isFinite(size) || size <= 0) {
-    return "Output pending";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  let value = size;
-  let unitIndex = 0;
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function getClipStatusVariant(status: string) {
-  if (status === "COMPLETED") {
-    return "success";
-  }
-
-  if (status === "PROCESSING") {
-    return "default";
-  }
-
-  if (status === "FAILED") {
-    return "error";
-  }
-
-  return "warning";
-}
 
 function getClipStatusCopy(status: string, hasOutput: boolean) {
   if (status === "COMPLETED" && hasOutput) {

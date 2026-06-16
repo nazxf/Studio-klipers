@@ -20,69 +20,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatBytes, formatDate, formatSeconds } from "@/lib/formatters";
+import { getClipStatusVariant } from "@/lib/status-helpers";
 import { auth } from "@/lib/auth";
 import { requireCurrentUser } from "@/server/current-user";
 import { getClipForUser } from "@/server/clips";
-
-function formatBytes(sizeBytes: string | null) {
-  if (!sizeBytes) {
-    return "Not available";
-  }
-
-  const size = Number(sizeBytes);
-
-  if (!Number.isFinite(size) || size <= 0) {
-    return "Not available";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  let value = size;
-  let unitIndex = 0;
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatSeconds(seconds: number | null) {
-  if (seconds === null || !Number.isFinite(seconds) || seconds < 0) {
-    return "Not available";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round((seconds % 60) * 10) / 10;
-  const paddedSeconds = remainingSeconds
-    .toFixed(remainingSeconds % 1 === 0 ? 0 : 1)
-    .padStart(2, "0");
-
-  return `${minutes}:${paddedSeconds}`;
-}
-
-function getClipStatusVariant(status: string) {
-  if (status === "COMPLETED") {
-    return "success";
-  }
-
-  if (status === "PROCESSING") {
-    return "default";
-  }
-
-  if (status === "FAILED") {
-    return "error";
-  }
-
-  return "warning";
-}
 
 function getStatusCopy(status: string) {
   if (status === "COMPLETED") {
@@ -327,7 +269,7 @@ export default async function ClipDetailPage({
           <CardContent>
             <dl>
               <DetailRow label="Status" value={clip.status} />
-              <DetailRow label="Size" value={formatBytes(clip.sizeBytes)} />
+              <DetailRow label="Size" value={formatBytes(clip.sizeBytes, "Not available")} />
               <DetailRow label="Updated" value={formatDate(clip.updatedAt)} />
               <DetailRow label="File" value={canUseOutput ? "clip.mp4" : "Not available"} />
             </dl>
@@ -358,7 +300,7 @@ export default async function ClipDetailPage({
               <div>
                 <p className="text-sm font-semibold text-foreground">Size</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {formatBytes(clip.video.sizeBytes)}
+                  {formatBytes(clip.video.sizeBytes, "Not available")}
                 </p>
               </div>
             </div>
@@ -367,7 +309,7 @@ export default async function ClipDetailPage({
               <div>
                 <p className="text-sm font-semibold text-foreground">Duration</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {formatSeconds(clip.video.durationSeconds)}
+                  {formatSeconds(clip.video.durationSeconds, "Not available")}
                 </p>
               </div>
             </div>

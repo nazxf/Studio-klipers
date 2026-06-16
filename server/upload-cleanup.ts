@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { getLocalUploadTempRoot } from "@/server/storage";
 
-export const STALE_TEMP_UPLOAD_AGE_MS = 24 * 60 * 60 * 1000;
+const STALE_TEMP_UPLOAD_AGE_MS = 24 * 60 * 60 * 1000;
 
 let cleanupRan = false;
 
@@ -16,7 +16,7 @@ let cleanupRan = false;
  * Failures are swallowed and logged as warnings — cleanup must never block or
  * crash the host process.
  */
-export async function cleanupStaleTempUploads(
+async function cleanupStaleTempUploads(
   maxAgeMs: number = STALE_TEMP_UPLOAD_AGE_MS,
 ): Promise<{ removed: number; scanned: number }> {
   const tempRoot = getLocalUploadTempRoot();
