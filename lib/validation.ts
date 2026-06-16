@@ -54,7 +54,7 @@ export const clipCreateSchema = z
   .object({
     endSeconds: endSecondsSchema,
     startSeconds: startSecondsSchema,
-    title: optionalTitleSchema,
+    title: optionalTitleSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (data.endSeconds <= data.startSeconds) {
