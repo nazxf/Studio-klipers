@@ -14,6 +14,11 @@ import {
   getLocalVideoSourceKey,
   resolveLocalUploadKey,
 } from "@/server/storage";
+import { scheduleStaleTempUploadCleanup } from "@/server/upload-cleanup";
+
+// Sweep stale *.part temp uploads once on first import. Best-effort, never
+// awaited or thrown — see server/upload-cleanup.ts.
+scheduleStaleTempUploadCleanup();
 
 export const MAX_LOCAL_UPLOAD_BYTES = 100 * 1024 * 1024;
 const MAX_VIDEO_TITLE_LENGTH = 120;
@@ -23,6 +28,7 @@ const VALID_UPLOAD_ERROR_CODES = new Set([
   "missing_file",
   "empty_file",
   "too_large",
+  "invalid_content_type",
   "invalid_type",
   "invalid_mp4",
   "duration_unknown",
@@ -76,6 +82,7 @@ export function getUploadErrorMessage(errorCode?: string) {
     missing_file: "Choose an MP4 file before uploading.",
     empty_file: "The selected file is empty.",
     too_large: "Use an MP4 up to 100 MB for local development storage.",
+    invalid_content_type: "Submit the upload as multipart/form-data.",
     invalid_type: "Only MP4 files are supported in the local MVP.",
     invalid_mp4: "The file does not look like a valid MP4 container.",
     duration_unknown:

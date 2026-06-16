@@ -10,9 +10,10 @@ import { getLocalVideoSourceKey, resolveLocalUploadKey } from "@/server/storage"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
+async function handleVideoStreamRequest(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  params: Promise<{ id: string }>,
+  method: "GET" | "HEAD",
 ) {
   const session = await auth();
 
@@ -68,6 +69,21 @@ export async function GET(
   return createProtectedMp4StreamResponse({
     filePath,
     fileSize,
+    method,
     rangeHeader: request.headers.get("range"),
   });
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return handleVideoStreamRequest(request, params, "GET");
+}
+
+export async function HEAD(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return handleVideoStreamRequest(request, params, "HEAD");
 }

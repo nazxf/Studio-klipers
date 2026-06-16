@@ -7,9 +7,10 @@ import { createProtectedMp4StreamResponse } from "@/server/protected-mp4-stream"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
+async function handleClipStreamRequest(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  params: Promise<{ id: string }>,
+  method: "GET" | "HEAD",
 ) {
   const session = await auth();
 
@@ -30,6 +31,21 @@ export async function GET(
   return createProtectedMp4StreamResponse({
     filePath: clipOutput.filePath,
     fileSize: clipOutput.fileSize,
+    method,
     rangeHeader: request.headers.get("range"),
   });
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return handleClipStreamRequest(request, params, "GET");
+}
+
+export async function HEAD(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return handleClipStreamRequest(request, params, "HEAD");
 }
