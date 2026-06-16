@@ -1,3 +1,5 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function VideosLoading() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background" role="status" aria-label="Loading videos">
@@ -9,7 +11,7 @@ export default function VideosLoading() {
         <div className="hidden w-60 border-r border-border bg-card lg:block">
           <div className="space-y-3 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-8 animate-pulse rounded-md bg-secondary/50" />
+              <Skeleton key={i} className="h-8" />
             ))}
           </div>
         </div>
@@ -19,19 +21,19 @@ export default function VideosLoading() {
           {/* Page header skeleton */}
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <div className="h-3 w-14 animate-pulse rounded bg-secondary/50" />
-              <div className="h-7 w-32 animate-pulse rounded bg-secondary/60" />
-              <div className="h-4 w-64 animate-pulse rounded bg-secondary/40" />
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-7 w-32 bg-secondary/60" />
+              <Skeleton className="h-4 w-64 bg-secondary/40" />
             </div>
-            <div className="h-9 w-32 animate-pulse rounded-md bg-secondary/50" />
+            <Skeleton className="h-9 w-32" />
           </div>
 
           {/* Video list skeleton */}
           <div className="mt-8 grid gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div
+              <Skeleton
                 key={i}
-                className="h-20 animate-pulse rounded-lg border border-border bg-card"
+                className="h-20 rounded-lg border border-border bg-card"
                 style={{ animationDelay: `${i * 100}ms` }}
               />
             ))}
