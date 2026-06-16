@@ -1,4 +1,35 @@
+import { stat } from "node:fs/promises";
+
 import { prisma } from "@/lib/prisma";
+import { probeMp4DurationSeconds } from "@/server/media-toolchain";
+import { resolveLocalUploadKey } from "@/server/storage";
+
+/**
+ * Best-effort auto-probe: when a video has no durationSeconds but does have a
+ * sourceKey pointing to a local file, run ffprobe and persist the result.
+ * Returns the detected duration or null if anything fails.
+ */
+async function tryAutoProbe(videoId: string, sourceKey: string): Promise<number | null> {
+  try {
+    const filePath = resolveLocalUploadKey(sourceKey);
+    const fileStat = await stat(filePath);
+
+    if (!fileStat.isFile() || fileStat.size <= 0) {
+      return null;
+    }
+
+    const durationSeconds = await probeMp4DurationSeconds(filePath);
+
+    await prisma.video.update({
+      data: { durationSeconds },
+      where: { id: videoId },
+    });
+
+    return durationSeconds;
+  } catch {
+    return null;
+  }
+}
 
 export async function getVideoForUser({
   userId,
@@ -50,13 +81,20 @@ export async function getVideoForUser({
     return null;
   }
 
+  // Auto-probe duration if missing but source file exists
+  let { durationSeconds } = video;
+
+  if (durationSeconds === null && video.sourceKey) {
+    durationSeconds = await tryAutoProbe(video.id, video.sourceKey);
+  }
+
   return {
     id: video.id,
     title: video.title,
     fileName: video.fileName,
     mimeType: video.mimeType,
     sizeBytes: video.sizeBytes.toString(),
-    durationSeconds: video.durationSeconds,
+    durationSeconds,
     sourceKey: video.sourceKey,
     status: video.status,
     createdAt: video.createdAt.toISOString(),
