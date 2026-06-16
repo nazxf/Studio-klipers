@@ -91,13 +91,13 @@ The script safely finds videos with missing duration metadata, resolves each `so
 5. Preview the protected source video.
 6. Enter start and end times.
 7. Create a clip job.
-8. In a terminal, run:
+8. In a separate terminal, start the clip worker daemon:
 
 ```powershell
 npm run worker:clips
 ```
 
-The worker processes exactly one pending clip job and exits.
+The worker runs as a poll-loop daemon. It picks up pending clip jobs automatically, processes them with FFmpeg, and keeps running until you stop it with Ctrl+C.
 
 9. Open `/clips`.
 10. Open the completed clip.
@@ -131,11 +131,13 @@ npx prisma generate
 npm run check:media
 ```
 
+## Upload Hardening
+
+The upload route validates `Content-Type: multipart/form-data` (415 if missing) and pre-checks `Content-Length` against the 100 MB limit (413 if exceeded) before streaming begins. Stale temp upload files older than 24 hours are automatically cleaned on server startup.
+
 ## Important Docs
 
 - `AGENTS.md`: project and agent rules
-- `IMPECCABLE.md`: UI direction and Impeccable requirement
 - `docs/ARCHITECTURE.md`: technical architecture
 - `docs/QA-CHECKLIST.md`: final MVP QA checklist
 - `docs/CODEX-HANDOFF.md`: current handoff/status
-- `docs/CODEX-PROMPTS.md`: phase prompts and guardrails

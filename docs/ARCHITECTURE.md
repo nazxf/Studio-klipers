@@ -56,21 +56,24 @@ components/
 lib/
   auth.ts
   prisma.ts
-  storage.ts
-  validations.ts
+  validation.ts
   motion.ts
   utils.ts
 
 server/
   videos.ts
   clips.ts
-  jobs.ts
+  clip-jobs.ts
+  clip-processing.ts
+  clip-files.ts
+  protected-mp4-stream.ts
   storage.ts
+  upload.ts
+  upload-cleanup.ts
+  media-toolchain.ts
 
 workers/
   clip-worker.ts
-  ffmpeg.ts
-  queue.ts
 
 prisma/
   schema.prisma
@@ -91,9 +94,9 @@ Minimum models:
 - Clip
 - ProcessingJob
 
-Suggested enums:
+Enums:
 
-- VideoStatus: UPLOADED, READY, FAILED
+- VideoStatus: UPLOADED, READY, FAILED (uploads go directly to READY after commit + probe)
 - ClipStatus: PENDING, PROCESSING, COMPLETED, FAILED
 - JobStatus: PENDING, PROCESSING, COMPLETED, FAILED
 - JobType: CREATE_CLIP
@@ -116,17 +119,36 @@ The database stores controlled relative keys without the `uploads/` root. Never 
 
 All file access must go through protected API routes. Those routes must verify the session `userId`, confirm ownership of the related `Video` or `Clip` record, resolve the controlled relative key on the server, and stream the file only after authorization succeeds.
 
-Protected MP4 streaming (video, clip, and caption-render routes) shares one helper, `server/protected-mp4-stream.ts`. The helper handles full `200`, `206` Partial Content with `Content-Range`, and `416` responses. Auth, ownership, resolver, file-existence, exact key-shape, and `uploads/` path-safety checks remain in each route or its resolver.
+Protected MP4 streaming (video and clip routes) shares one helper, `server/protected-mp4-stream.ts`. The helper handles full `200`, `206` Partial Content with `Content-Range`, suffix-range (`bytes=-N`), `416` responses, and `HEAD` requests (identical headers, no body, no disk read). Auth, ownership, resolver, file-existence, exact key-shape, and `uploads/` path-safety checks remain in each route or its resolver.
 
 ## Worker reliability
 
-FFmpeg processing runs in local workers, not in serverless functions. The clip worker and caption render worker share `server/ffmpeg-runner.ts`, which enforces a per-job FFmpeg timeout (10 minutes for clips, 30 minutes for caption renders), kills and escalates to `SIGKILL` on timeout, and captures only bounded `stderr` for safe failure messages.
+FFmpeg processing runs in a local worker daemon (`workers/clip-worker.ts`), not in serverless functions. The worker uses a poll-loop pattern (250ms busy / 2s idle / 5s error backoff) with graceful SIGINT/SIGTERM shutdown.
 
-Job claiming uses a transactional `findFirst` + conditional `updateMany` with an attempts guard (`attempts < MAX_*_JOB_ATTEMPTS`). `ProcessingJob` has `@@index([type, status, createdAt])` for the claim query.
+FFmpeg is invoked via `server/clip-processing.ts` with:
 
-## Upload status
+- `-ss` after `-i` for frame-accurate seeking
+- `libx264` veryfast CRF 20 + AAC 160k
+- `+faststart` for progressive download
+- `-avoid_negative_ts make_zero`
+- 10-minute per-job timeout with SIGKILL escalation
+- Bounded `stderr` capture for safe failure messages
 
-Upload currently uses `request.formData()` and `File.arrayBuffer()` with a 100 MB cap, MP4 signature check, and server-side `ffprobe` duration detection. Temp-file streaming upload is not implemented and is deferred to a future Phase 9C upload hardening plan.
+Job claiming uses a Serializable-isolation transaction with `findFirst` + conditional `updateMany` and an attempts guard (`attempts < MAX_CLIP_JOB_ATTEMPTS`). `ProcessingJob` has `@@index([type, status, createdAt])` for the claim query.
+
+## Upload pipeline
+
+Upload uses streaming multipart parsing via `busboy` with:
+
+- Route-level `Content-Type` validation (415 if not `multipart/form-data`)
+- Route-level `Content-Length` pre-check against 100 MB limit (413 early reject)
+- Streaming to a temp `.part` file under `uploads/tmp/uploads/`
+- MP4 magic-byte signature check on the first 32 bytes
+- `busboy` file-size limit enforcement (per-byte, no full buffering)
+- Atomic rename to final path after `ffprobe` duration detection
+- `Video.status` set to `READY` immediately (file is committed and probed)
+
+Stale temp files (older than 24h) are swept automatically on first module load via `server/upload-cleanup.ts`.
 
 ## Future production storage
 
