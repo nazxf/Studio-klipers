@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bell, Command, Search, Upload } from "lucide-react";
 
 import { BrandMark } from "@/components/shared/brand-mark";
+import { MobileSidebar } from "@/components/layout/mobile-sidebar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export function AppTopbar({ user }: { user: Session["user"] }) {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/88 backdrop-blur">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <MobileSidebar />
         <BrandMark className="md:hidden" />
 
         <div className="hidden w-full max-w-md items-center md:flex">
@@ -69,6 +71,11 @@ export function AppTopbar({ user }: { user: Session["user"] }) {
           </Badge>
           <Button variant="secondary" size="icon" aria-label="Notifications">
             <Bell aria-hidden="true" />
+          </Button>
+          <Button asChild size="icon" className="sm:hidden" aria-label="Upload">
+            <Link href="/upload">
+              <Upload aria-hidden="true" />
+            </Link>
           </Button>
           <Button asChild className="hidden sm:inline-flex">
             <Link href="/upload">
