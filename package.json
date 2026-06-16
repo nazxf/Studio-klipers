@@ -8,10 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "worker:clips": "tsx workers/clip-worker.ts",
-    "worker:subtitles": "tsx workers/subtitle-worker.ts",
-    "worker:caption-renders": "tsx workers/caption-render-worker.ts",
     "check:media": "tsx scripts/check-media.ts",
-    "check:transcription": "tsx scripts/check-transcription.ts",
     "backfill:durations": "tsx scripts/backfill-video-durations.ts"
   },
   "dependencies": {
@@ -22,6 +19,7 @@
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
+    "busboy": "^1.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
@@ -31,9 +29,11 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",

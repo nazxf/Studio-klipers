@@ -127,6 +127,7 @@ Files are served only through protected API routes that verify session ownership
 npm run lint
 npm run build
 npx prisma validate
+npx prisma generate
 npm run check:media
 ```
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, FileVideo2, UploadCloud } from "lucide-react";
 
@@ -53,11 +53,23 @@ function getClientFileError(file: File | null) {
 
 export function LocalUploadForm({ errorMessage }: { errorMessage: string | null }) {
   const router = useRouter();
+  const activeRequestRef = useRef<XMLHttpRequest | null>(null);
+  const isMountedRef = useRef(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [clientError, setClientError] = useState<string | null>(errorMessage);
   const [progress, setProgress] = useState(0);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const isUploading = uploadState === "uploading";
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      activeRequestRef.current?.abort();
+      activeRequestRef.current = null;
+    };
+  }, []);
 
   function handleFileChange(file: File | null) {
     setSelectedFile(file);
@@ -81,12 +93,18 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
 
     const formData = new FormData(form);
     const request = new XMLHttpRequest();
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = request;
 
     setClientError(null);
     setUploadState("uploading");
     setProgress(1);
 
     request.upload.onprogress = (progressEvent) => {
+      if (!isMountedRef.current || activeRequestRef.current !== request) {
+        return;
+      }
+
       if (!progressEvent.lengthComputable) {
         return;
       }
@@ -96,6 +114,11 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
     };
 
     request.onload = () => {
+      if (!isMountedRef.current || activeRequestRef.current !== request) {
+        return;
+      }
+
+      activeRequestRef.current = null;
       let payload: { redirectUrl?: string; errorMessage?: string } = {};
 
       try {
@@ -117,9 +140,24 @@ export function LocalUploadForm({ errorMessage }: { errorMessage: string | null 
     };
 
     request.onerror = () => {
+      if (!isMountedRef.current || activeRequestRef.current !== request) {
+        return;
+      }
+
+      activeRequestRef.current = null;
       setProgress(0);
       setUploadState("error");
       setClientError("The upload connection failed. Try again with a smaller MP4.");
+    };
+
+    request.onabort = () => {
+      if (!isMountedRef.current || activeRequestRef.current !== request) {
+        return;
+      }
+
+      activeRequestRef.current = null;
+      setProgress(0);
+      setUploadState(selectedFile ? "ready" : "idle");
     };
 
     request.open("POST", "/api/upload");

@@ -13,7 +13,6 @@ type BackfillSummary = {
   invalidSourceKey: number;
   missingFile: number;
   probeFailed: number;
-  skippedWithoutSourceKey: number;
   updated: number;
 };
 
@@ -37,16 +36,6 @@ async function main() {
     },
     where: {
       durationSeconds: null,
-      sourceKey: {
-        not: null,
-      },
-    },
-  });
-
-  const skippedWithoutSourceKey = await prisma.video.count({
-    where: {
-      durationSeconds: null,
-      sourceKey: null,
     },
   });
 
@@ -55,16 +44,10 @@ async function main() {
     invalidSourceKey: 0,
     missingFile: 0,
     probeFailed: 0,
-    skippedWithoutSourceKey,
     updated: 0,
   };
 
   for (const video of videos) {
-    if (!video.sourceKey) {
-      summary.skippedWithoutSourceKey += 1;
-      continue;
-    }
-
     let filePath: string;
 
     try {
@@ -112,7 +95,6 @@ async function main() {
   console.log("Duration backfill summary");
   console.log(`Checked: ${summary.checked}`);
   console.log(`Updated: ${summary.updated}`);
-  console.log(`Skipped without source key: ${summary.skippedWithoutSourceKey}`);
   console.log(`Skipped missing file: ${summary.missingFile}`);
   console.log(`Skipped invalid source key: ${summary.invalidSourceKey}`);
   console.log(`Skipped probe failed: ${summary.probeFailed}`);

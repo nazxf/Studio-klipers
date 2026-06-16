@@ -18,9 +18,6 @@ model User {
   videos        Video[]
   clips         Clip[]
   processingJobs ProcessingJob[]
-  subtitleTracks SubtitleTrack[]
-  subtitleSegments SubtitleSegment[]
-  captionRenders CaptionRender[]
 
   @@map("users")
 }
@@ -84,34 +81,6 @@ enum JobStatus {
 
 enum JobType {
   CREATE_CLIP
-  GENERATE_SUBTITLES
-  BURN_CAPTIONS
-}
-
-enum SubtitleTrackStatus {
-  PENDING
-  PROCESSING
-  READY
-  FAILED
-}
-
-enum SubtitleSource {
-  AUTO
-}
-
-enum CaptionPresetKey {
-  CREATOR_CLASSIC
-  LIME_PUNCH
-  GAMING_BOLD
-  CLEAN_LOWER
-  CINEMATIC_POP
-}
-
-enum CaptionRenderStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
 }
 
 model Video {
@@ -122,7 +91,7 @@ model Video {
   mimeType        String          @map("mime_type")
   sizeBytes       BigInt          @map("size_bytes")
   durationSeconds Float?          @map("duration_seconds")
-  sourceKey       String?         @map("source_key")
+  sourceKey       String          @map("source_key")
   status          VideoStatus     @default(UPLOADED)
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
@@ -152,8 +121,6 @@ model Clip {
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   video           Video           @relation(fields: [videoId], references: [id], onDelete: Cascade)
   processingJobs  ProcessingJob[]
-  subtitleTrack   SubtitleTrack?
-  captionRenders  CaptionRender[]
 
   @@index([userId, createdAt])
   @@index([userId, status])
@@ -161,88 +128,11 @@ model Clip {
   @@map("clips")
 }
 
-model SubtitleTrack {
-  id                  String              @id @default(cuid())
-  userId              String              @map("user_id")
-  clipId              String              @unique @map("clip_id")
-  status              SubtitleTrackStatus @default(PENDING)
-  source              SubtitleSource      @default(AUTO)
-  languageCode        String?             @map("language_code")
-  languageProbability Float?              @map("language_probability")
-  engine              String?
-  modelName           String?             @map("model_name")
-  presetKey           CaptionPresetKey     @default(CREATOR_CLASSIC) @map("preset_key")
-  presetStyle         Json?                @map("preset_style")
-  errorMessage        String?             @map("error_message") @db.Text
-  generatedAt         DateTime?           @map("generated_at")
-  createdAt           DateTime            @default(now()) @map("created_at")
-  updatedAt           DateTime            @updatedAt @map("updated_at")
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clip                Clip                @relation(fields: [clipId], references: [id], onDelete: Cascade)
-  segments            SubtitleSegment[]
-  captionRenders      CaptionRender[]
-
-  @@index([userId, status])
-  @@index([status])
-  @@map("subtitle_tracks")
-}
-
-model SubtitleSegment {
-  id            String        @id @default(cuid())
-  userId        String        @map("user_id")
-  trackId       String        @map("track_id")
-  startSeconds  Float         @map("start_seconds")
-  endSeconds    Float         @map("end_seconds")
-  text          String        @db.Text
-  generatedText String?       @map("generated_text") @db.Text
-  confidence    Float?
-  words         Json?
-  isEdited      Boolean       @default(false) @map("is_edited")
-  sortOrder     Int           @map("sort_order")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  track         SubtitleTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([trackId, sortOrder])
-  @@index([trackId, startSeconds])
-  @@map("subtitle_segments")
-}
-
-model CaptionRender {
-  id                String              @id @default(cuid())
-  userId            String              @map("user_id")
-  clipId            String              @map("clip_id")
-  subtitleTrackId   String              @map("subtitle_track_id")
-  status            CaptionRenderStatus @default(PENDING)
-  presetKey         CaptionPresetKey    @default(CREATOR_CLASSIC) @map("preset_key")
-  presetStyle       Json?               @map("preset_style")
-  segmentsSnapshot  Json                @map("segments_snapshot")
-  outputKey         String?             @map("output_key")
-  sizeBytes         BigInt?             @map("size_bytes")
-  errorMessage      String?             @map("error_message") @db.Text
-  startedAt         DateTime?           @map("started_at")
-  completedAt       DateTime?           @map("completed_at")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clip              Clip                @relation(fields: [clipId], references: [id], onDelete: Cascade)
-  subtitleTrack     SubtitleTrack       @relation(fields: [subtitleTrackId], references: [id], onDelete: Cascade)
-  processingJobs    ProcessingJob[]
-
-  @@index([userId, status])
-  @@index([clipId, status])
-  @@index([subtitleTrackId])
-  @@map("caption_renders")
-}
-
 model ProcessingJob {
   id            String      @id @default(cuid())
   userId        String      @map("user_id")
   videoId       String      @map("video_id")
   clipId        String?     @map("clip_id")
-  captionRenderId String?   @map("caption_render_id")
   type          JobType
   status        JobStatus   @default(PENDING)
   progress      Int         @default(0)
@@ -255,12 +145,10 @@ model ProcessingJob {
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   video         Video       @relation(fields: [videoId], references: [id], onDelete: Cascade)
   clip          Clip?       @relation(fields: [clipId], references: [id], onDelete: SetNull)
-  captionRender CaptionRender? @relation(fields: [captionRenderId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
   @@index([status, createdAt])
   @@index([type, status, createdAt])
   @@index([clipId])
-  @@index([captionRenderId])
   @@map("processing_jobs")
 }

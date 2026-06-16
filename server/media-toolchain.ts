@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
 
 export const MEDIA_TOOL_SETUP_GUIDANCE =
   "Install FFmpeg full build and add its bin folder to PATH, then restart terminal/dev server.";
 
 const FFPROBE_TIMEOUT_MS = 15_000;
+const FFPROBE_KILL_GRACE_MS = 5_000;
+const MAX_CAPTURED_FFPROBE_OUTPUT = 8_000;
 
 type MediaToolName = "ffmpeg" | "ffprobe";
 
@@ -22,6 +23,22 @@ function getMediaToolPathOverride(tool: MediaToolName) {
   return process.env[envName]?.trim() || null;
 }
 
+function getMediaToolBinFolder(override: string) {
+  const normalized = override.replace(/\\/g, "/");
+  const lastSlashIndex = normalized.lastIndexOf("/");
+  const lastSegment = lastSlashIndex >= 0 ? normalized.slice(lastSlashIndex + 1) : normalized;
+
+  if (!lastSegment.includes(".") || lastSlashIndex < 0) {
+    return override;
+  }
+
+  return override.slice(0, lastSlashIndex);
+}
+
+function getPathDelimiter() {
+  return process.platform === "win32" ? ";" : ":";
+}
+
 function getMediaToolSpawnEnv(tool: MediaToolName) {
   const override = getMediaToolPathOverride(tool);
 
@@ -29,12 +46,119 @@ function getMediaToolSpawnEnv(tool: MediaToolName) {
     return undefined;
   }
 
-  const binFolder = path.extname(override) ? path.dirname(override) : override;
+  const binFolder = getMediaToolBinFolder(override);
 
   return {
     ...process.env,
-    PATH: `${binFolder}${path.delimiter}${process.env.PATH ?? ""}`,
+    PATH: `${binFolder}${getPathDelimiter()}${process.env.PATH ?? ""}`,
   };
+}
+
+function appendCapturedOutput(currentOutput: string, nextChunk: Buffer) {
+  const combinedOutput = currentOutput + nextChunk.toString("utf8");
+
+  if (combinedOutput.length <= MAX_CAPTURED_FFPROBE_OUTPUT) {
+    return combinedOutput;
+  }
+
+  return combinedOutput.slice(-MAX_CAPTURED_FFPROBE_OUTPUT);
+}
+
+function runFfprobe(args: string[], timeoutMessage: string) {
+  return new Promise<string>((resolve, reject) => {
+    const ffprobe = spawn(/*turbopackIgnore: true*/ getMediaToolCommand("ffprobe"), args, {
+      env: getMediaToolSpawnEnv("ffprobe"),
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    let isSettled = false;
+    let didTimeOut = false;
+    let killGraceTimeout: NodeJS.Timeout | null = null;
+    let timeout: NodeJS.Timeout | null = null;
+
+    function clearTimers() {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+
+      if (killGraceTimeout) {
+        clearTimeout(killGraceTimeout);
+        killGraceTimeout = null;
+      }
+    }
+
+    function getTimeoutError() {
+      return new Error(`${timeoutMessage}: ${stderr.trim() || "no stderr output"}`);
+    }
+
+    function settleReject(error: Error) {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      clearTimers();
+      reject(error);
+    }
+
+    function settleResolve(output: string) {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      clearTimers();
+      resolve(output);
+    }
+
+    timeout = setTimeout(() => {
+      if (isSettled) {
+        return;
+      }
+
+      didTimeOut = true;
+      ffprobe.kill();
+
+      killGraceTimeout = setTimeout(() => {
+        ffprobe.kill("SIGKILL");
+        settleReject(getTimeoutError());
+      }, FFPROBE_KILL_GRACE_MS);
+    }, FFPROBE_TIMEOUT_MS);
+
+    ffprobe.stdout.on("data", (chunk: Buffer) => {
+      stdout = appendCapturedOutput(stdout, chunk);
+    });
+
+    ffprobe.stderr.on("data", (chunk: Buffer) => {
+      stderr = appendCapturedOutput(stderr, chunk);
+    });
+
+    ffprobe.on("error", (error) => {
+      if (didTimeOut) {
+        settleReject(getTimeoutError());
+        return;
+      }
+
+      settleReject(error);
+    });
+
+    ffprobe.on("close", (exitCode) => {
+      if (didTimeOut) {
+        settleReject(getTimeoutError());
+        return;
+      }
+
+      if (exitCode !== 0) {
+        settleReject(new Error(stderr.trim() || "ffprobe could not read media metadata."));
+        return;
+      }
+
+      settleResolve(stdout);
+    });
+  });
 }
 
 export function getMediaToolSource(tool: MediaToolName): "env" | "path" {
@@ -49,7 +173,7 @@ export function getFfprobeCommand() {
   return getMediaToolCommand("ffprobe");
 }
 
-export function probeMp4DurationSeconds(filePath: string) {
+export async function probeMp4DurationSeconds(filePath: string) {
   const args = [
     "-v",
     "error",
@@ -60,69 +184,17 @@ export function probeMp4DurationSeconds(filePath: string) {
     filePath,
   ];
 
-  return new Promise<number>((resolve, reject) => {
-    const ffprobe = spawn("ffprobe", args, {
-      env: getMediaToolSpawnEnv("ffprobe"),
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    let isSettled = false;
+  const stdout = await runFfprobe(args, "ffprobe timed out while reading MP4 duration");
+  const durationSeconds = Number(stdout.trim());
 
-    const timeout = setTimeout(() => {
-      if (isSettled) {
-        return;
-      }
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw new Error("ffprobe returned an invalid MP4 duration.");
+  }
 
-      isSettled = true;
-      ffprobe.kill();
-      reject(new Error("ffprobe timed out while reading MP4 duration."));
-    }, FFPROBE_TIMEOUT_MS);
-
-    ffprobe.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-
-    ffprobe.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-
-    ffprobe.on("error", (error) => {
-      if (isSettled) {
-        return;
-      }
-
-      isSettled = true;
-      clearTimeout(timeout);
-      reject(error);
-    });
-
-    ffprobe.on("close", (exitCode) => {
-      if (isSettled) {
-        return;
-      }
-
-      isSettled = true;
-      clearTimeout(timeout);
-
-      if (exitCode !== 0) {
-        reject(new Error(stderr.trim() || "ffprobe could not read MP4 duration."));
-        return;
-      }
-
-      const durationSeconds = Number(stdout.trim());
-
-      if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-        reject(new Error("ffprobe returned an invalid MP4 duration."));
-        return;
-      }
-
-      resolve(Math.round(durationSeconds * 1000) / 1000);
-    });
-  });
+  return Math.round(durationSeconds * 1000) / 1000;
 }
 
-export function probeVideoDimensions(filePath: string) {
+export async function probeVideoDimensions(filePath: string) {
   const args = [
     "-v",
     "error",
@@ -135,71 +207,19 @@ export function probeVideoDimensions(filePath: string) {
     filePath,
   ];
 
-  return new Promise<{ height: number; width: number }>((resolve, reject) => {
-    const ffprobe = spawn("ffprobe", args, {
-      env: getMediaToolSpawnEnv("ffprobe"),
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    let isSettled = false;
+  const stdout = await runFfprobe(args, "ffprobe timed out while reading video dimensions");
+  const [widthValue, heightValue] = stdout.trim().split("x");
+  const width = Number(widthValue);
+  const height = Number(heightValue);
 
-    const timeout = setTimeout(() => {
-      if (isSettled) {
-        return;
-      }
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new Error("ffprobe returned invalid video dimensions.");
+  }
 
-      isSettled = true;
-      ffprobe.kill();
-      reject(new Error("ffprobe timed out while reading video dimensions."));
-    }, FFPROBE_TIMEOUT_MS);
-
-    ffprobe.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-
-    ffprobe.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-
-    ffprobe.on("error", (error) => {
-      if (isSettled) {
-        return;
-      }
-
-      isSettled = true;
-      clearTimeout(timeout);
-      reject(error);
-    });
-
-    ffprobe.on("close", (exitCode) => {
-      if (isSettled) {
-        return;
-      }
-
-      isSettled = true;
-      clearTimeout(timeout);
-
-      if (exitCode !== 0) {
-        reject(new Error(stderr.trim() || "ffprobe could not read video dimensions."));
-        return;
-      }
-
-      const [widthValue, heightValue] = stdout.trim().split("x");
-      const width = Number(widthValue);
-      const height = Number(heightValue);
-
-      if (
-        !Number.isInteger(width) ||
-        !Number.isInteger(height) ||
-        width <= 0 ||
-        height <= 0
-      ) {
-        reject(new Error("ffprobe returned invalid video dimensions."));
-        return;
-      }
-
-      resolve({ height, width });
-    });
-  });
+  return { height, width };
 }

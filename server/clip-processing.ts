@@ -1,8 +1,7 @@
 import { mkdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { ClipStatus, JobStatus, JobType } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
+import { ClipStatus, JobStatus, JobType, Prisma } from "@prisma/client";
 
 import { prisma } from "../lib/prisma";
 import {
@@ -13,12 +12,17 @@ import { runFfmpegProcess } from "./ffmpeg-runner";
 import { getLocalClipOutputKey, resolveLocalUploadKey } from "./storage";
 
 const CLIP_FFMPEG_TIMEOUT_MS = 10 * 60 * 1000;
+const STALE_CLIP_JOB_MS = CLIP_FFMPEG_TIMEOUT_MS + 60_000;
 const MAX_CAPTURED_FFMPEG_OUTPUT = 5_000;
 const MAX_CLIP_JOB_ATTEMPTS = 3;
+const STALE_CLIP_JOB_RETRY_MESSAGE = "Clip processing stopped before finishing. Retrying.";
+const STALE_CLIP_JOB_FAILED_MESSAGE =
+  "Clip processing stopped before finishing. Create the clip again.";
 
 type ClaimedJob = {
   clipId: string | null;
   id: string;
+  userId: string;
 };
 
 type WorkerResult =
@@ -50,7 +54,93 @@ async function assertFileExists(filePath: string, label: string) {
 }
 
 async function claimNextPendingClipJob(): Promise<ClaimedJob | null> {
-  return prisma.$transaction(async (tx) => {
+  // Serializable isolation prevents two concurrent workers from both reading
+  // the same PENDING job before either commits the PROCESSING flip. The
+  // updateMany count check is still kept as a belt-and-braces guard.
+  return prisma.$transaction(
+    async (tx) => {
+    const staleStartedBefore = new Date(Date.now() - STALE_CLIP_JOB_MS);
+    const staleJobs = await tx.processingJob.findMany({
+      select: {
+        attempts: true,
+        clipId: true,
+        id: true,
+        userId: true,
+      },
+      take: 20,
+      where: {
+        startedAt: {
+          lt: staleStartedBefore,
+        },
+        status: JobStatus.PROCESSING,
+        type: JobType.CREATE_CLIP,
+      },
+    });
+
+    for (const staleJob of staleJobs) {
+      if (staleJob.attempts >= MAX_CLIP_JOB_ATTEMPTS) {
+        await tx.processingJob.updateMany({
+          data: {
+            completedAt: new Date(),
+            errorMessage: STALE_CLIP_JOB_FAILED_MESSAGE,
+            status: JobStatus.FAILED,
+          },
+          where: {
+            id: staleJob.id,
+            status: JobStatus.PROCESSING,
+            type: JobType.CREATE_CLIP,
+            userId: staleJob.userId,
+          },
+        });
+
+        if (staleJob.clipId) {
+          await tx.clip.updateMany({
+            data: {
+              errorMessage: STALE_CLIP_JOB_FAILED_MESSAGE,
+              status: ClipStatus.FAILED,
+            },
+            where: {
+              id: staleJob.clipId,
+              status: ClipStatus.PROCESSING,
+              userId: staleJob.userId,
+            },
+          });
+        }
+
+        continue;
+      }
+
+      await tx.processingJob.updateMany({
+        data: {
+          completedAt: null,
+          errorMessage: STALE_CLIP_JOB_RETRY_MESSAGE,
+          progress: 0,
+          startedAt: null,
+          status: JobStatus.PENDING,
+        },
+        where: {
+          id: staleJob.id,
+          status: JobStatus.PROCESSING,
+          type: JobType.CREATE_CLIP,
+          userId: staleJob.userId,
+        },
+      });
+
+      if (staleJob.clipId) {
+        await tx.clip.updateMany({
+          data: {
+            errorMessage: null,
+            status: ClipStatus.PENDING,
+          },
+          where: {
+            id: staleJob.clipId,
+            status: ClipStatus.PROCESSING,
+            userId: staleJob.userId,
+          },
+        });
+      }
+    }
+
     const pendingJob = await tx.processingJob.findFirst({
       orderBy: {
         createdAt: "asc",
@@ -58,6 +148,7 @@ async function claimNextPendingClipJob(): Promise<ClaimedJob | null> {
       select: {
         clipId: true,
         id: true,
+        userId: true,
       },
       where: {
         attempts: {
@@ -105,12 +196,17 @@ async function claimNextPendingClipJob(): Promise<ClaimedJob | null> {
         },
         where: {
           id: pendingJob.clipId,
+          userId: pendingJob.userId,
         },
       });
     }
 
     return pendingJob;
-  });
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
 }
 
 async function loadProcessingJob(jobId: string) {
@@ -155,16 +251,32 @@ function runFfmpeg({
   sourcePath: string;
   startSeconds: number;
 }) {
+  // Accurate seek: -ss AFTER -i forces decode-up-to-start so the clip begins
+  // exactly at the user-selected timestamp instead of snapping to the nearest
+  // keyframe. Re-encode video with libx264 (veryfast/CRF 20) and audio with AAC
+  // so the resulting MP4 is web-friendly and faststart-streamable.
   const args = [
     "-y",
-    "-ss",
-    String(startSeconds),
     "-i",
     sourcePath,
+    "-ss",
+    String(startSeconds),
     "-t",
     String(durationSeconds),
-    "-c",
-    "copy",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "20",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-movflags",
+    "+faststart",
+    "-avoid_negative_ts",
+    "make_zero",
     outputPath,
   ];
 
@@ -182,14 +294,16 @@ async function markClipJobCompleted({
   jobId,
   outputKey,
   outputSizeBytes,
+  userId,
 }: {
   clipId: string;
   jobId: string;
   outputKey: string;
   outputSizeBytes: number;
+  userId: string;
 }) {
   await prisma.$transaction([
-    prisma.clip.update({
+    prisma.clip.updateMany({
       data: {
         errorMessage: null,
         outputKey,
@@ -198,9 +312,10 @@ async function markClipJobCompleted({
       },
       where: {
         id: clipId,
+        userId,
       },
     }),
-    prisma.processingJob.update({
+    prisma.processingJob.updateMany({
       data: {
         completedAt: new Date(),
         errorMessage: null,
@@ -209,6 +324,7 @@ async function markClipJobCompleted({
       },
       where: {
         id: jobId,
+        userId,
       },
     }),
   ]);
@@ -218,13 +334,15 @@ async function markClipJobFailed({
   clipId,
   errorMessage,
   jobId,
+  userId,
 }: {
   clipId: string | null;
   errorMessage: string;
   jobId: string;
+  userId: string;
 }) {
   const updates: Prisma.PrismaPromise<unknown>[] = [
-    prisma.processingJob.update({
+    prisma.processingJob.updateMany({
       data: {
         completedAt: new Date(),
         errorMessage,
@@ -232,19 +350,21 @@ async function markClipJobFailed({
       },
       where: {
         id: jobId,
+        userId,
       },
     }),
   ];
 
   if (clipId) {
     updates.push(
-      prisma.clip.update({
+      prisma.clip.updateMany({
         data: {
           errorMessage,
           status: ClipStatus.FAILED,
         },
         where: {
           id: clipId,
+          userId,
         },
       }),
     );
@@ -315,6 +435,7 @@ export async function processNextClipJob(): Promise<WorkerResult> {
       jobId: job.id,
       outputKey,
       outputSizeBytes: outputStat.size,
+      userId: job.userId,
     });
 
     return {
@@ -338,6 +459,7 @@ export async function processNextClipJob(): Promise<WorkerResult> {
       clipId,
       errorMessage,
       jobId: claimedJob.id,
+      userId: claimedJob.userId,
     });
 
     return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -154,6 +154,8 @@ function getClientValidationError({
 export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const clipRequestRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
   const [clipTitle, setClipTitle] = useState("");
   const [startValue, setStartValue] = useState("0");
   const [endValue, setEndValue] = useState("3");
@@ -176,6 +178,16 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
     startSeconds !== null && endSeconds !== null && endSeconds > startSeconds
       ? endSeconds - startSeconds
       : 0;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      clipRequestRef.current?.abort();
+      clipRequestRef.current = null;
+    };
+  }, []);
 
   function setStartHere() {
     const nextValue = Math.max(videoRef.current?.currentTime ?? currentTime, 0);
@@ -219,12 +231,17 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    clipRequestRef.current?.abort();
+    const controller = new AbortController();
+    clipRequestRef.current = controller;
+
     try {
       const response = await fetch(`/api/videos/${video.id}/clips`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
         body: JSON.stringify({
           endSeconds,
           startSeconds,
@@ -237,6 +254,10 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
         errorMessage?: string;
       };
 
+      if (!isMountedRef.current || clipRequestRef.current !== controller) {
+        return;
+      }
+
       if (!response.ok) {
         setErrorMessage(payload.errorMessage ?? "The clip job could not be created.");
         return;
@@ -248,9 +269,16 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
       setClipTitle("");
       router.refresh();
     } catch {
+      if (!isMountedRef.current || clipRequestRef.current !== controller) {
+        return;
+      }
+
       setErrorMessage("The clip job request failed. Try again.");
     } finally {
-      setIsSubmitting(false);
+      if (isMountedRef.current && clipRequestRef.current === controller) {
+        clipRequestRef.current = null;
+        setIsSubmitting(false);
+      }
     }
   }
 

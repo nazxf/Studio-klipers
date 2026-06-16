@@ -116,6 +116,18 @@ The database stores controlled relative keys without the `uploads/` root. Never 
 
 All file access must go through protected API routes. Those routes must verify the session `userId`, confirm ownership of the related `Video` or `Clip` record, resolve the controlled relative key on the server, and stream the file only after authorization succeeds.
 
+Protected MP4 streaming (video, clip, and caption-render routes) shares one helper, `server/protected-mp4-stream.ts`. The helper handles full `200`, `206` Partial Content with `Content-Range`, and `416` responses. Auth, ownership, resolver, file-existence, exact key-shape, and `uploads/` path-safety checks remain in each route or its resolver.
+
+## Worker reliability
+
+FFmpeg processing runs in local workers, not in serverless functions. The clip worker and caption render worker share `server/ffmpeg-runner.ts`, which enforces a per-job FFmpeg timeout (10 minutes for clips, 30 minutes for caption renders), kills and escalates to `SIGKILL` on timeout, and captures only bounded `stderr` for safe failure messages.
+
+Job claiming uses a transactional `findFirst` + conditional `updateMany` with an attempts guard (`attempts < MAX_*_JOB_ATTEMPTS`). `ProcessingJob` has `@@index([type, status, createdAt])` for the claim query.
+
+## Upload status
+
+Upload currently uses `request.formData()` and `File.arrayBuffer()` with a 100 MB cap, MP4 signature check, and server-side `ffprobe` duration detection. Temp-file streaming upload is not implemented and is deferred to a future Phase 9C upload hardening plan.
+
 ## Future production storage
 
 Cloudflare R2 is optional future production storage, not required MVP storage. If production needs non-local storage later, evaluate VPS local disk, MinIO, or Cloudflare R2 after the payment-method blocker is resolved. Do not add R2 SDKs or R2 environment variables for the MVP.

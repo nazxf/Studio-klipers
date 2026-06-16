@@ -7,6 +7,7 @@ Use this checklist before moving between major phases and before deployment.
 - `npm run lint` passes.
 - `npm run build` passes.
 - `npx prisma validate` passes.
+- `npx prisma generate` passes.
 - `npm run check:media` passes.
 - Node can spawn `ffmpeg`.
 - Node can spawn `ffprobe`.
@@ -112,6 +113,34 @@ Use this checklist before moving between major phases and before deployment.
 - Pending state tells the operator to run `npm run worker:clips`.
 - Failed state is clear.
 - User cannot access another user's clip.
+
+## Phase 9A Worker Reliability
+
+- Shared FFmpeg runner exists at `server/ffmpeg-runner.ts`.
+- Clip worker uses a 10 minute FFmpeg timeout.
+- Caption render worker uses a 30 minute FFmpeg timeout.
+- A timed-out FFmpeg process is killed and escalated to `SIGKILL` after the kill-grace window.
+- Failure messages capture only bounded `stderr` and do not expose local filesystem paths.
+- Clip, subtitle, and caption-render job claiming uses an attempts guard (`attempts < MAX_*_JOB_ATTEMPTS`).
+- `ProcessingJob` has `@@index([type, status, createdAt])`.
+- Migration `20260607121220_add_processing_job_claim_index` is applied.
+
+## Phase 9B Protected MP4 Stream Helper
+
+- Shared helper exists at `server/protected-mp4-stream.ts`.
+- Video, clip, and caption-render stream routes use the shared helper.
+- No `Range` header returns full `200` with correct `Content-Length`.
+- A valid `Range` returns `206` with `Content-Range` and `Accept-Ranges: bytes`.
+- An invalid `Range` returns `416` with `Content-Range: bytes */<size>`.
+- `Content-Type` is `video/mp4`.
+- Auth, ownership, resolver, `stat`/file-existence, exact key shape, and `uploads/` path-safety checks stay in each route or its resolver.
+
+## Upload Streaming Status
+
+- The upload route still uses `request.formData()` and `File.arrayBuffer()`.
+- Maximum local upload remains 100 MB.
+- Server-side `ffprobe` duration detection on upload exists and stores `Video.durationSeconds`.
+- Temp-file streaming upload is NOT implemented and is deferred to Phase 9C upload hardening (planning only, requires a separate approved plan).
 
 ## Verified End-to-End Local Flow
 

@@ -1,3 +1,5 @@
+import { Readable } from "node:stream";
+
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
@@ -48,18 +50,16 @@ export async function POST(request: Request) {
     return NextResponse.redirect(loginUrl, 303);
   }
 
+  if (!request.body) {
+    return uploadErrorResponse(request, "missing_file");
+  }
+
   try {
-    const formData = await request.formData();
-    const file = formData.get("file");
-    const title = formData.get("title");
-
-    if (!(file instanceof File)) {
-      return uploadErrorResponse(request, "missing_file");
-    }
-
     const video = await saveLocalMp4Upload({
-      file,
-      title: typeof title === "string" ? title : undefined,
+      source: {
+        body: Readable.fromWeb(request.body as Parameters<typeof Readable.fromWeb>[0]),
+        contentType: request.headers.get("content-type"),
+      },
       userId: session.user.id,
     });
 

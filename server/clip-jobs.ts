@@ -1,10 +1,10 @@
 import { ClipStatus, JobStatus, JobType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-
-export const MIN_CLIP_DURATION_SECONDS = 3;
-export const MAX_CLIP_DURATION_SECONDS = 300;
-const MAX_CLIP_TITLE_LENGTH = 120;
+import {
+  MAX_CLIP_TITLE_LENGTH,
+  type ClipCreateInput,
+} from "@/lib/validation";
 
 const VALID_CLIP_ERROR_CODES = new Set([
   "invalid_payload",
@@ -25,25 +25,9 @@ export class ClipValidationError extends Error {
   }
 }
 
-function parseSeconds(value: unknown) {
-  if (typeof value === "string" && value.trim() === "") {
-    return null;
-  }
-
-  const seconds = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
-
-  if (!Number.isFinite(seconds)) {
-    return null;
-  }
-
-  return Math.round(seconds * 1000) / 1000;
-}
-
-function getClipTitle(title: unknown, videoTitle: string) {
-  const cleanTitle = typeof title === "string" ? title.replace(/\s+/g, " ").trim() : "";
-
-  if (cleanTitle) {
-    return cleanTitle.slice(0, MAX_CLIP_TITLE_LENGTH);
+function getClipTitle(title: string | undefined, videoTitle: string) {
+  if (title) {
+    return title.slice(0, MAX_CLIP_TITLE_LENGTH);
   }
 
   return `${videoTitle} clip`.slice(0, MAX_CLIP_TITLE_LENGTH);
@@ -72,15 +56,12 @@ export function getClipValidationMessage(errorCode?: string) {
 }
 
 export async function createPendingClipJob({
-  endSeconds: rawEndSeconds,
-  startSeconds: rawStartSeconds,
+  endSeconds,
+  startSeconds,
   title,
   userId,
   videoId,
-}: {
-  endSeconds: unknown;
-  startSeconds: unknown;
-  title: unknown;
+}: ClipCreateInput & {
   userId: string;
   videoId: string;
 }) {
@@ -105,31 +86,6 @@ export async function createPendingClipJob({
     throw new ClipValidationError("source_missing");
   }
 
-  const startSeconds = parseSeconds(rawStartSeconds);
-  const endSeconds = parseSeconds(rawEndSeconds);
-
-  if (startSeconds === null || startSeconds < 0) {
-    throw new ClipValidationError("invalid_start");
-  }
-
-  if (endSeconds === null) {
-    throw new ClipValidationError("invalid_end");
-  }
-
-  if (endSeconds <= startSeconds) {
-    throw new ClipValidationError("end_before_start");
-  }
-
-  const durationSeconds = Math.round((endSeconds - startSeconds) * 1000) / 1000;
-
-  if (durationSeconds < MIN_CLIP_DURATION_SECONDS) {
-    throw new ClipValidationError("too_short");
-  }
-
-  if (durationSeconds > MAX_CLIP_DURATION_SECONDS) {
-    throw new ClipValidationError("too_long");
-  }
-
   if (video.durationSeconds === null) {
     throw new ClipValidationError("duration_missing");
   }
@@ -137,6 +93,9 @@ export async function createPendingClipJob({
   if (endSeconds > video.durationSeconds) {
     throw new ClipValidationError("beyond_duration");
   }
+
+  const durationSeconds =
+    Math.round((endSeconds - startSeconds) * 1000) / 1000;
 
   return prisma.$transaction(async (tx) => {
     const clip = await tx.clip.create({

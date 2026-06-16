@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import {
-  getClipDownloadFileName,
+  getClipDownloadDisposition,
   resolveCompletedClipOutputForUser,
 } from "@/server/clip-files";
 
@@ -33,7 +33,7 @@ export async function GET(
   }
 
   const stream = Readable.toWeb(createReadStream(clipOutput.filePath));
-  const fileName = getClipDownloadFileName({
+  const { headerValue } = getClipDownloadDisposition({
     clipId: id,
     title: clipOutput.title,
   });
@@ -41,7 +41,7 @@ export async function GET(
   return new Response(stream as ReadableStream, {
     headers: {
       "Cache-Control": "private, no-store",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
+      "Content-Disposition": headerValue,
       "Content-Length": String(clipOutput.fileSize),
       "Content-Type": "video/mp4",
     },

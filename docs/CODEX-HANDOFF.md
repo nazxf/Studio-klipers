@@ -185,6 +185,37 @@ Current working local MVP:
 - Rewrote `README.md` as a local MVP setup and usage guide.
 - Updated `docs/CODEX-HANDOFF.md` and `docs/QA-CHECKLIST.md` for the final local MVP state.
 
+### Phase 9A Worker Reliability Hardening
+
+- Added a shared FFmpeg runner at `server/ffmpeg-runner.ts` used by both the clip worker and the caption render worker.
+- The runner enforces a per-job FFmpeg timeout, kills the process on timeout, escalates to `SIGKILL` after a kill-grace window, and reports a safe timeout message.
+- The clip worker uses a 10 minute FFmpeg timeout (`server/clip-processing.ts`).
+- The caption render worker uses a 30 minute FFmpeg timeout (`server/caption-render-processing.ts`).
+- The runner captures only bounded `stderr` (tail-limited) for safe failure messages and never streams stdout.
+- Clip, subtitle, and caption-render job claiming uses an attempts guard (`attempts < MAX_*_JOB_ATTEMPTS`) inside a transactional `findFirst` + conditional `updateMany` claim, incrementing `attempts` on each claim.
+- `ProcessingJob` has `@@index([type, status, createdAt])` for the worker claim query.
+- Added migration `20260607121220_add_processing_job_claim_index`.
+- `npm run lint`, `npm run build`, `npx prisma validate`, and `npm run check:media` passed.
+
+### Phase 9B Protected MP4 Stream Helper
+
+- Added a shared protected MP4 stream helper at `server/protected-mp4-stream.ts` exporting `parseMp4Range` and `createProtectedMp4StreamResponse`.
+- Refactored the video, clip, and caption-render stream routes to use the shared helper:
+  - `app/api/videos/[id]/stream/route.ts`
+  - `app/api/clips/[id]/stream/route.ts`
+  - `app/api/clips/[id]/caption-renders/[renderId]/stream/route.ts`
+- Range behavior is preserved exactly: full `200`, `206` Partial Content with `Content-Range`, `416` Range Not Satisfiable, `Accept-Ranges`, `Content-Length`, and `Content-Type: video/mp4`.
+- Auth, ownership, resolver, `stat`/file-existence, exact source/output key shape, and `uploads/` path-safety checks remain in each route or its existing resolver.
+- No new stream error behavior and no server-side stream logging were added in this phase.
+- `npm run lint`, `npm run build`, `npx prisma validate`, and `npm run check:media` passed.
+
+### Upload Streaming Status
+
+- The upload route still reads the request with `request.formData()` and buffers the file with `File.arrayBuffer()` (`app/api/upload/route.ts`, `server/upload.ts`).
+- The maximum local upload remains 100 MB.
+- Server-side `ffprobe` duration detection on upload exists and stores `Video.durationSeconds`.
+- Temp-file streaming upload is NOT implemented. It is future Phase 9C upload hardening and must not be implemented without a separate approved plan.
+
 ## Confirmed Stack
 
 - Next.js App Router
@@ -265,6 +296,13 @@ Current working local MVP:
 - `server/clip-files.ts`
 - `server/clip-jobs.ts`
 - `server/clip-processing.ts`
+- `server/caption-render-processing.ts`
+- `server/subtitle-processing.ts`
+- `server/ffmpeg-runner.ts`
+- `server/protected-mp4-stream.ts`
+- `app/api/videos/[id]/stream/route.ts`
+- `app/api/clips/[id]/stream/route.ts`
+- `app/api/clips/[id]/caption-renders/[renderId]/stream/route.ts`
 - `server/storage.ts`
 - `server/media-toolchain.ts`
 - `server/videos.ts`
@@ -294,7 +332,8 @@ Current working local MVP:
 - Do not commit `.env.local`.
 - Do not commit `uploads/`.
 - Do not use Supabase.
-- Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, Phase 7.1, Phase 7.2, or MVP final polish.
+- Do not redo Phase 1, Phase 1.1, Phase 2, Phase 3, Phase 4A, Phase 5, Phase 6, Phase 7, Phase 7.1, Phase 7.2, MVP final polish, Phase 9A worker reliability hardening, or Phase 9B protected MP4 stream helper.
+- Do not reimplement the shared FFmpeg runner, FFmpeg timeouts, attempts guard, `ProcessingJob` claim index, or the shared protected MP4 stream helper.
 - Do not reimplement upload/local storage, clip job creation, local worker processing, or implement Cloudflare R2, subtitles, payment, AI features, social feed, likes/comments, public profiles, team workspace, YouTube downloader, TikTok integration, or complex timeline editing outside the roadmap phase.
 - Do not add Cloudflare R2 SDK packages or make R2 an MVP requirement.
 - Do not expose `uploads/` as public static files.
@@ -305,7 +344,13 @@ Current working local MVP:
 
 ## Next Step
 
-The local MVP is ready for final manual operation testing. Do not add new product features before a clean local retest.
+Phase 9A worker reliability hardening and Phase 9B protected MP4 stream helper are complete and verified. The next recommended phase is Phase 9C upload hardening, planning only.
+
+- Phase 9C should evaluate temp-file streaming upload (stage to a temp path, then rename), streaming the request body to disk instead of `File.arrayBuffer()`, and orphan cleanup.
+- Keep the 100 MB cap, MP4 signature check, `ffprobe` duration gate, auth, and `userId` scoping unchanged.
+- Do not implement streaming upload without a separate approved plan.
+
+The local MVP is ready for manual operation testing.
 
 Recommended local sequence:
 
@@ -394,6 +439,7 @@ Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variable
 - `npm run lint` passes.
 - `npm run build` passes.
 - `npx prisma validate` passes.
+- `npx prisma generate` passes.
 - `npm run check:media` passes when Node can spawn the local FFmpeg full build.
 - `npx prisma migrate dev --name add_video_clip_processing_models` passes.
 - `npx prisma generate` passes.
@@ -415,3 +461,7 @@ Do not implement Cloudflare R2, add R2 SDK packages, add R2 environment variable
 - Worker errors are sanitized before user display/storage.
 - Clip range validation rejects missing duration metadata and ranges beyond source duration.
 - README documents local setup, media preflight, duration backfill, storage paths, and the `npm run worker:clips` workflow.
+- Shared FFmpeg runner (`server/ffmpeg-runner.ts`) enforces clip (10 min) and caption render (30 min) FFmpeg timeouts with bounded stderr capture.
+- Clip, subtitle, and caption-render workers use an attempts guard with a transactional claim, and `ProcessingJob` has the `@@index([type, status, createdAt])` claim index.
+- Video, clip, and caption-render stream routes use the shared `server/protected-mp4-stream.ts` helper with identical 200/206/416 Range behavior.
+- Upload still uses `request.formData()` / `File.arrayBuffer()`; temp-file streaming upload is not implemented and is deferred to Phase 9C.

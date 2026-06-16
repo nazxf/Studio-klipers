@@ -7,6 +7,8 @@ import {
 } from "../server/media-toolchain";
 
 const VERSION_TIMEOUT_MS = 10_000;
+const VERSION_KILL_GRACE_MS = 5_000;
+const MAX_CAPTURED_VERSION_OUTPUT = 8_000;
 
 type MediaToolName = "ffmpeg" | "ffprobe";
 
@@ -37,6 +39,16 @@ function readVersionLine(output: string) {
     .find(Boolean) ?? null;
 }
 
+function appendCapturedOutput(currentOutput: string, nextChunk: Buffer) {
+  const combinedOutput = currentOutput + nextChunk.toString("utf8");
+
+  if (combinedOutput.length <= MAX_CAPTURED_VERSION_OUTPUT) {
+    return combinedOutput;
+  }
+
+  return combinedOutput.slice(-MAX_CAPTURED_VERSION_OUTPUT);
+}
+
 function readMediaToolVersion(tool: MediaToolName) {
   const command = getCommand(tool);
 
@@ -47,56 +59,91 @@ function readMediaToolVersion(tool: MediaToolName) {
     let stdout = "";
     let stderr = "";
     let isSettled = false;
+    let didTimeOut = false;
+    let killGraceTimeout: NodeJS.Timeout | null = null;
+
+    function clearTimers() {
+      clearTimeout(timeout);
+
+      if (killGraceTimeout) {
+        clearTimeout(killGraceTimeout);
+        killGraceTimeout = null;
+      }
+    }
+
+    function settleReject(error: Error) {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      clearTimers();
+      reject(error);
+    }
+
+    function settleResolve(versionLine: string) {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      clearTimers();
+      resolve(versionLine);
+    }
+
+    function getTimeoutError() {
+      return new Error(`${tool} timed out while reading version.`);
+    }
 
     const timeout = setTimeout(() => {
       if (isSettled) {
         return;
       }
 
-      isSettled = true;
+      didTimeOut = true;
       child.kill();
-      reject(new Error(`${tool} timed out while reading version.`));
+      killGraceTimeout = setTimeout(() => {
+        child.kill("SIGKILL");
+        settleReject(getTimeoutError());
+      }, VERSION_KILL_GRACE_MS);
     }, VERSION_TIMEOUT_MS);
 
     child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
+      stdout = appendCapturedOutput(stdout, chunk);
     });
 
     child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
+      stderr = appendCapturedOutput(stderr, chunk);
     });
 
     child.on("error", (error) => {
-      if (isSettled) {
+      if (didTimeOut) {
+        settleReject(getTimeoutError());
         return;
       }
 
-      isSettled = true;
-      clearTimeout(timeout);
-      reject(error);
+      settleReject(error);
     });
 
     child.on("close", (exitCode) => {
-      if (isSettled) {
+      if (didTimeOut) {
+        settleReject(getTimeoutError());
         return;
       }
 
-      isSettled = true;
-      clearTimeout(timeout);
-
       if (exitCode !== 0) {
-        reject(new Error(stderr.trim() || `${tool} exited with code ${exitCode ?? "unknown"}.`));
+        settleReject(new Error(stderr.trim() || `${tool} exited with code ${exitCode ?? "unknown"}.`));
         return;
       }
 
       const versionLine = readVersionLine(stdout) ?? readVersionLine(stderr);
 
       if (!versionLine) {
-        reject(new Error(`${tool} did not print version output.`));
+        settleReject(new Error(`${tool} did not print version output.`));
         return;
       }
 
-      resolve(versionLine);
+      settleResolve(versionLine);
     });
   });
 }

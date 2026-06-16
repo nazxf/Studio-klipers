@@ -13,22 +13,15 @@ import {
   Timer,
 } from "lucide-react";
 
-import { CaptionPresetSelector } from "@/components/clips/caption-preset-selector";
-import { CaptionRenderPanel } from "@/components/clips/caption-render-panel";
-import { ClipSubtitlePreview } from "@/components/clips/clip-subtitle-preview";
 import { ClipStatusRefresh } from "@/components/clips/clip-status-refresh";
-import { SubtitleEditor } from "@/components/clips/subtitle-editor";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
-import { DEFAULT_CAPTION_PRESET_KEY } from "@/lib/caption-presets";
-import { getLatestCaptionRenderForCompletedClipForUser } from "@/server/caption-renders";
 import { requireCurrentUser } from "@/server/current-user";
 import { getClipForUser } from "@/server/clips";
-import { getSubtitleTrackForCompletedClipForUser } from "@/server/subtitles";
 
 function formatBytes(sizeBytes: string | null) {
   if (!sizeBytes) {
@@ -166,25 +159,13 @@ export default async function ClipDetailPage({
     clipId: id,
     userId: user.id,
   });
-  const subtitleTrack = await getSubtitleTrackForCompletedClipForUser({
-    clipId: id,
-    userId: user.id,
-  });
-  const latestCaptionRender = await getLatestCaptionRenderForCompletedClipForUser({
-    clipId: id,
-    userId: user.id,
-  });
 
   if (!clip) {
     notFound();
   }
 
   const shouldRefreshClip = clip.status === "PENDING" || clip.status === "PROCESSING";
-  const shouldRefreshSubtitles =
-    subtitleTrack?.status === "PENDING" || subtitleTrack?.status === "PROCESSING";
-  const shouldRefreshCaptionRender =
-    latestCaptionRender?.status === "PENDING" || latestCaptionRender?.status === "PROCESSING";
-  const isRefreshing = shouldRefreshClip || shouldRefreshSubtitles || shouldRefreshCaptionRender;
+  const isRefreshing = shouldRefreshClip;
   const canUseOutput = clip.status === "COMPLETED" && clip.hasOutput;
   const statusCopy = getStatusCopy(clip.status);
   const progress =
@@ -192,9 +173,6 @@ export default async function ClipDetailPage({
     (clip.status === "COMPLETED" ? 100 : clip.status === "PROCESSING" ? 10 : 0);
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
   const failedMessage = clip.errorMessage ?? clip.latestJob?.errorMessage;
-  const activeCaptionPresetKey = subtitleTrack?.presetKey ?? DEFAULT_CAPTION_PRESET_KEY;
-  const canCreateCaptionRender =
-    subtitleTrack?.status === "READY" && subtitleTrack.segments.length > 0;
 
   return (
     <DashboardShell user={user}>
@@ -232,10 +210,11 @@ export default async function ClipDetailPage({
         <Card className="overflow-hidden shadow-panel">
           <CardContent className="p-0">
             {canUseOutput ? (
-              <ClipSubtitlePreview
-                videoSrc={`/api/clips/${clip.id}/stream`}
-                presetKey={activeCaptionPresetKey}
-                segments={subtitleTrack?.status === "READY" ? subtitleTrack.segments : []}
+              <video
+                className="aspect-video w-full bg-black"
+                controls
+                preload="metadata"
+                src={`/api/clips/${clip.id}/stream`}
               />
             ) : (
               <div className="flex aspect-video items-center justify-center bg-secondary/55 p-6 text-center">
@@ -314,23 +293,6 @@ export default async function ClipDetailPage({
           </Card>
         </div>
       </section>
-
-      {canUseOutput && subtitleTrack ? (
-        <CaptionPresetSelector
-          activePresetKey={activeCaptionPresetKey}
-          clipId={clip.id}
-        />
-      ) : null}
-
-      {canUseOutput ? <SubtitleEditor clipId={clip.id} track={subtitleTrack} /> : null}
-
-      {canUseOutput ? (
-        <CaptionRenderPanel
-          canCreate={canCreateCaptionRender}
-          clipId={clip.id}
-          render={latestCaptionRender}
-        />
-      ) : null}
 
       {clip.status === "FAILED" && failedMessage ? (
         <section className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-5">
