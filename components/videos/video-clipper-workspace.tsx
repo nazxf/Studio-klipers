@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   AlertCircle,
   CalendarClock,
@@ -17,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MAX_CLIP_TITLE_LENGTH } from "@/lib/validation";
 
 type VideoClip = {
   id: string;
@@ -42,6 +46,69 @@ type VideoDetail = {
 
 const MIN_CLIP_SECONDS = 3;
 const MAX_CLIP_SECONDS = 300;
+
+const clipFormSchema = z
+  .object({
+    title: z
+      .string()
+      .max(MAX_CLIP_TITLE_LENGTH)
+      .optional()
+      .transform((v) => (v?.trim() ? v.trim() : undefined)),
+    startSeconds: z.string().min(1, "Required"),
+    endSeconds: z.string().min(1, "Required"),
+  })
+  .superRefine((data, ctx) => {
+    const start = Number(data.startSeconds);
+    const end = Number(data.endSeconds);
+
+    if (!Number.isFinite(start) || start < 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Start time must be a finite number >= 0.",
+        path: ["startSeconds"],
+      });
+      return;
+    }
+
+    if (!Number.isFinite(end)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "End time must be a finite number.",
+        path: ["endSeconds"],
+      });
+      return;
+    }
+
+    if (end <= start) {
+      ctx.addIssue({
+        code: "custom",
+        message: "End time must be greater than start time.",
+        path: ["endSeconds"],
+      });
+      return;
+    }
+
+    const duration = end - start;
+
+    if (duration < MIN_CLIP_SECONDS) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Clip duration must be at least 3 seconds.",
+        path: ["endSeconds"],
+      });
+      return;
+    }
+
+    if (duration > MAX_CLIP_SECONDS) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Clip duration must be 5 minutes or shorter.",
+        path: ["endSeconds"],
+      });
+    }
+  });
+
+type ClipFormValues = z.input<typeof clipFormSchema>;
 
 function formatBytes(sizeBytes: string) {
   const size = Number(sizeBytes);
@@ -156,16 +223,32 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const clipRequestRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
-  const [clipTitle, setClipTitle] = useState("");
-  const [startValue, setStartValue] = useState("0");
-  const [endValue, setEndValue] = useState("3");
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ClipFormValues>({
+    resolver: zodResolver(clipFormSchema),
+    defaultValues: {
+      title: "",
+      startSeconds: "0",
+      endSeconds: "3",
+    },
+    mode: "onChange",
+  });
+
   const [currentTime, setCurrentTime] = useState(0);
   const [playerDuration, setPlayerDuration] = useState<number | null>(video.durationSeconds);
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const startValue = watch("startSeconds");
+  const endValue = watch("endSeconds");
   const startSeconds = parseSeconds(startValue);
   const endSeconds = parseSeconds(endValue);
   const durationLimit = video.durationSeconds ?? playerDuration;
@@ -191,13 +274,13 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
 
   function setStartHere() {
     const nextValue = Math.max(videoRef.current?.currentTime ?? currentTime, 0);
-    setStartValue(nextValue.toFixed(1));
+    setValue("startSeconds", nextValue.toFixed(1), { shouldValidate: true });
     setErrorMessage(null);
   }
 
   function setEndHere() {
     const nextValue = Math.max(videoRef.current?.currentTime ?? currentTime, 0);
-    setEndValue(nextValue.toFixed(1));
+    setValue("endSeconds", nextValue.toFixed(1), { shouldValidate: true });
     setErrorMessage(null);
   }
 
@@ -221,13 +304,21 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
     }
   }
 
-  async function createClip() {
-    if (helperError || startSeconds === null || endSeconds === null) {
-      setErrorMessage(helperError ?? "Select a valid range before creating a clip.");
+  async function onSubmit(data: ClipFormValues) {
+    const parsedStart = parseSeconds(data.startSeconds);
+    const parsedEnd = parseSeconds(data.endSeconds);
+
+    if (parsedStart === null || parsedEnd === null) {
+      setErrorMessage("Select a valid range before creating a clip.");
       return;
     }
 
-    setIsSubmitting(true);
+    // Extra duration-limit check (not in schema since it depends on player state)
+    if (durationLimit !== null && parsedEnd > durationLimit) {
+      setErrorMessage("End time cannot be greater than the source video duration.");
+      return;
+    }
+
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -243,9 +334,9 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          endSeconds,
-          startSeconds,
-          title: clipTitle,
+          endSeconds: parsedEnd,
+          startSeconds: parsedStart,
+          title: data.title,
         }),
       });
 
@@ -266,7 +357,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
       setSuccessMessage(
         `${payload.clip?.title ?? "Clip"} queued. Run npm run worker:clips to process it.`,
       );
-      setClipTitle("");
+      reset({ title: "", startSeconds: "0", endSeconds: "3" });
       router.refresh();
     } catch {
       if (!isMountedRef.current || clipRequestRef.current !== controller) {
@@ -277,7 +368,6 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
     } finally {
       if (isMountedRef.current && clipRequestRef.current === controller) {
         clipRequestRef.current = null;
-        setIsSubmitting(false);
       }
     }
   }
@@ -336,112 +426,117 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
               Queue a clip range for npm run worker:clips.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-2">
-              <label htmlFor="clip-title" className="text-sm font-semibold text-foreground">
-                Clip title
-              </label>
-              <Input
-                id="clip-title"
-                maxLength={120}
-                placeholder={`${video.title} clip`}
-                value={clipTitle}
-                onChange={(event) => setClipTitle(event.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div className="grid gap-2">
-                <label htmlFor="start-seconds" className="text-sm font-semibold text-foreground">
-                  Start time
+                <label htmlFor="clip-title" className="text-sm font-semibold text-foreground">
+                  Clip title
                 </label>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Input
-                    id="start-seconds"
-                    min={0}
-                    step="0.1"
-                    type="number"
-                    value={startValue}
-                    className="min-w-0"
-                    onChange={(event) => setStartValue(event.target.value)}
-                  />
-                  <Button type="button" variant="secondary" className="shrink-0" onClick={setStartHere}>
-                    <span className="min-[400px]:hidden">Set start</span>
-                    <span className="hidden min-[400px]:inline">Set start here</span>
-                  </Button>
+                <Input
+                  id="clip-title"
+                  maxLength={120}
+                  placeholder={`${video.title} clip`}
+                  {...register("title")}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <div className="grid gap-2">
+                  <label htmlFor="start-seconds" className="text-sm font-semibold text-foreground">
+                    Start time
+                  </label>
+                  <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                    <Input
+                      id="start-seconds"
+                      min={0}
+                      step="0.1"
+                      type="number"
+                      className="min-w-0"
+                      {...register("startSeconds")}
+                    />
+                    <Button type="button" variant="secondary" className="shrink-0" onClick={setStartHere}>
+                      <span className="min-[400px]:hidden">Set start</span>
+                      <span className="hidden min-[400px]:inline">Set start here</span>
+                    </Button>
+                  </div>
+                  {errors.startSeconds ? (
+                    <p className="text-xs text-destructive">{errors.startSeconds.message}</p>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-2">
+                  <label htmlFor="end-seconds" className="text-sm font-semibold text-foreground">
+                    End time
+                  </label>
+                  <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                    <Input
+                      id="end-seconds"
+                      min={0}
+                      step="0.1"
+                      type="number"
+                      className="min-w-0"
+                      {...register("endSeconds")}
+                    />
+                    <Button type="button" variant="secondary" className="shrink-0" onClick={setEndHere}>
+                      <span className="min-[400px]:hidden">Set end</span>
+                      <span className="hidden min-[400px]:inline">Set end here</span>
+                    </Button>
+                  </div>
+                  {errors.endSeconds ? (
+                    <p className="text-xs text-destructive">{errors.endSeconds.message}</p>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <label htmlFor="end-seconds" className="text-sm font-semibold text-foreground">
-                  End time
-                </label>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Input
-                    id="end-seconds"
-                    min={0}
-                    step="0.1"
-                    type="number"
-                    value={endValue}
-                    className="min-w-0"
-                    onChange={(event) => setEndValue(event.target.value)}
-                  />
-                  <Button type="button" variant="secondary" className="shrink-0" onClick={setEndHere}>
-                    <span className="min-[400px]:hidden">Set end</span>
-                    <span className="hidden min-[400px]:inline">Set end here</span>
-                  </Button>
+              <div className="rounded-md border border-border bg-secondary/45 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Timer className="size-4 text-primary" aria-hidden="true" />
+                    Selection
+                  </p>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {formatSeconds(Math.max(selectedDuration, 0))}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                  <p>Current {formatSeconds(currentTime)}</p>
+                  <p>Min {MIN_CLIP_SECONDS}s</p>
+                  <p>Max 5m</p>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-md border border-border bg-secondary/45 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Timer className="size-4 text-primary" aria-hidden="true" />
-                  Selection
-                </p>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {formatSeconds(Math.max(selectedDuration, 0))}
-                </span>
-              </div>
-              <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-                <p>Current {formatSeconds(currentTime)}</p>
-                <p>Min {MIN_CLIP_SECONDS}s</p>
-                <p>Max 5m</p>
-              </div>
-            </div>
+              {helperError ? (
+                <div className="rounded-md border border-warning/35 bg-warning/10 p-3">
+                  <p className="text-sm leading-6 text-warning">{helperError}</p>
+                </div>
+              ) : null}
 
-            {helperError ? (
-              <div className="rounded-md border border-warning/35 bg-warning/10 p-3">
-                <p className="text-sm leading-6 text-warning">{helperError}</p>
-              </div>
-            ) : null}
+              {errorMessage ? (
+                <div className="rounded-md border border-destructive/35 bg-destructive/10 p-3">
+                  <p className="inline-flex items-center gap-2 text-sm font-semibold text-destructive">
+                    <AlertCircle className="size-4" aria-hidden="true" />
+                    {errorMessage}
+                  </p>
+                </div>
+              ) : null}
 
-            {errorMessage ? (
-              <div className="rounded-md border border-destructive/35 bg-destructive/10 p-3">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-destructive">
-                  <AlertCircle className="size-4" aria-hidden="true" />
-                  {errorMessage}
-                </p>
-              </div>
-            ) : null}
+              {successMessage ? (
+                <div className="rounded-md border border-primary/25 bg-primary/10 p-3">
+                  <p className="text-sm font-semibold text-primary">{successMessage}</p>
+                </div>
+              ) : null}
 
-            {successMessage ? (
-              <div className="rounded-md border border-primary/25 bg-primary/10 p-3">
-                <p className="text-sm font-semibold text-primary">{successMessage}</p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <Button type="button" variant="secondary" onClick={previewSelection}>
+                  <Play aria-hidden="true" />
+                  {isPreviewing ? "Previewing" : "Preview selection"}
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  <Scissors aria-hidden="true" />
+                  {isSubmitting ? "Creating" : "Create clip"}
+                </Button>
               </div>
-            ) : null}
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <Button type="button" variant="secondary" onClick={previewSelection}>
-                <Play aria-hidden="true" />
-                {isPreviewing ? "Previewing" : "Preview selection"}
-              </Button>
-              <Button type="button" disabled={isSubmitting} onClick={createClip}>
-                <Scissors aria-hidden="true" />
-                {isSubmitting ? "Creating" : "Create clip"}
-              </Button>
-            </div>
+            </form>
           </CardContent>
         </Card>
       </section>
