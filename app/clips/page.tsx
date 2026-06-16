@@ -3,6 +3,8 @@ import { Clock3, Download, ExternalLink, FileVideo2, Play, Scissors } from "luci
 
 import { ClipStatusRefresh } from "@/components/clips/clip-status-refresh";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { AnimatedPage } from "@/components/motion/animated-page";
+import { StaggeredList, StaggeredItem } from "@/components/motion/staggered-list";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -95,43 +97,44 @@ export default async function ClipsPage() {
     <DashboardShell user={user}>
       <ClipStatusRefresh enabled={shouldRefresh} />
 
-      <PageHeader
-        eyebrow="Cuts"
-        title="Clips"
-        description="Queued, processing, completed, and failed clips from your own source videos."
-        action={
-          <Button asChild>
-            <Link href="/videos">
-              <Scissors aria-hidden="true" />
-              Create from video
-            </Link>
-          </Button>
-        }
-      />
+      <AnimatedPage>
+        <PageHeader
+          eyebrow="Cuts"
+          title="Clips"
+          description="Queued, processing, completed, and failed clips from your own source videos."
+          action={
+            <Button asChild>
+              <Link href="/videos">
+                <Scissors aria-hidden="true" />
+                Create from video
+              </Link>
+            </Button>
+          }
+        />
 
-      <section className="mt-8">
-        {clips.length === 0 ? (
-          <EmptyState
-            icon={Scissors}
-            title="No clips created yet"
-            description="Open a source video, choose a start and end time, then create a clip job for the local worker."
-            action={
-              <Button asChild variant="secondary">
-                <Link href="/videos">
-                  <Scissors aria-hidden="true" />
-                  Choose a source video
-                </Link>
-              </Button>
-            }
-          />
-        ) : (
-          <div className="grid gap-4">
-            {clips.map((clip) => {
+        <section className="mt-8">
+          {clips.length === 0 ? (
+            <EmptyState
+              icon={Scissors}
+              title="No clips created yet"
+              description="Open a source video, choose a start and end time, then create a clip job for the local worker."
+              action={
+                <Button asChild variant="secondary">
+                  <Link href="/videos">
+                    <Scissors aria-hidden="true" />
+                    Choose a source video
+                  </Link>
+                </Button>
+              }
+            />
+          ) : (
+            <StaggeredList className="grid gap-4">
+              {clips.map((clip) => {
               const canUseOutput = clip.status === "COMPLETED" && clip.hasOutput;
 
               return (
+                <StaggeredItem key={clip.id}>
                 <Card
-                  key={clip.id}
                   className="shadow-none transition-colors duration-150 hover:border-primary/20 hover:bg-card/90"
                 >
                   <CardContent className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -204,11 +207,13 @@ export default async function ClipsPage() {
                     </div>
                   </CardContent>
                 </Card>
+                </StaggeredItem>
               );
             })}
-          </div>
-        )}
-      </section>
+            </StaggeredList>
+          )}
+        </section>
+      </AnimatedPage>
     </DashboardShell>
   );
 }

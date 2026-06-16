@@ -1,7 +1,11 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { CheckCircle2, Circle, Scissors, Timer } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 
 const steps = [
   {
@@ -31,36 +35,46 @@ export function WorkflowCard() {
         <CardTitle>Clip workflow</CardTitle>
         <CardDescription>Operational steps from source file to final cut.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
+      <CardContent>
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+          className="space-y-5"
+        >
+          {steps.map((step, index) => {
+            const Icon = step.icon;
 
-          return (
-            <div key={step.title} className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className="flex size-9 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground">
-                  <Icon className="size-4" aria-hidden="true" />
+            return (
+              <motion.div key={step.title} variants={staggerItem} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="flex size-9 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground">
+                    <Icon className="size-4" aria-hidden="true" />
+                  </div>
+                  {index < steps.length - 1 ? (
+                    <div className="mt-2 h-8 w-px bg-border" aria-hidden="true" />
+                  ) : null}
                 </div>
-                {index < steps.length - 1 ? (
-                  <div className="mt-2 h-8 w-px bg-border" aria-hidden="true" />
-                ) : null}
-              </div>
-              <div className="min-w-0 flex-1 pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-foreground">{step.title}</p>
-                  <Badge variant={index === 0 ? "default" : "secondary"}>{step.state}</Badge>
+                <div className="min-w-0 flex-1 pb-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">{step.title}</p>
+                    <Badge variant={index === 0 ? "default" : "secondary"}>{step.state}</Badge>
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.description}</p>
                 </div>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.description}</p>
-              </div>
-            </div>
-          );
-        })}
-        <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3">
-          <Circle className="mt-0.5 size-4 text-primary" aria-hidden="true" />
-          <p className="text-sm leading-6 text-muted-foreground">
-            Run npm run worker:clips locally to process one queued clip job and write the MP4 output.
-          </p>
-        </div>
+              </motion.div>
+            );
+          })}
+          <motion.div
+            variants={staggerItem}
+            className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3"
+          >
+            <Circle className="mt-0.5 size-4 text-primary" aria-hidden="true" />
+            <p className="text-sm leading-6 text-muted-foreground">
+              Run npm run worker:clips locally to process one queued clip job and write the MP4 output.
+            </p>
+          </motion.div>
+        </motion.div>
       </CardContent>
     </Card>
   );

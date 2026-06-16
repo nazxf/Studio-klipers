@@ -15,6 +15,7 @@ import {
 
 import { ClipStatusRefresh } from "@/components/clips/clip-status-refresh";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { AnimatedPage } from "@/components/motion/animated-page";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -178,10 +179,11 @@ export default async function ClipDetailPage({
     <DashboardShell user={user}>
       <ClipStatusRefresh enabled={isRefreshing} />
 
-      <PageHeader
-        eyebrow="Clip detail"
-        title={clip.title}
-        description="Protected local output, source context, and worker status."
+      <AnimatedPage>
+        <PageHeader
+          eyebrow="Clip detail"
+          title={clip.title}
+          description="Protected local output, source context, and worker status."
         action={
           canUseOutput ? (
             <Button asChild>
@@ -381,6 +383,7 @@ export default async function ClipDetailPage({
           </CardContent>
         </Card>
       </section>
+      </AnimatedPage>
     </DashboardShell>
   );
 }

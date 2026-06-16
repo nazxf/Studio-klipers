@@ -1,11 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { RadioTower, UploadCloud, Video } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { scaleIn } from "@/lib/motion";
 
 export function UploadDropzonePreview() {
   return (
+    <motion.div initial="hidden" animate="visible" variants={scaleIn}>
     <Card className="overflow-hidden shadow-none">
       <CardHeader>
         <CardTitle>Source intake</CardTitle>
@@ -66,5 +71,6 @@ export function UploadDropzonePreview() {
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
