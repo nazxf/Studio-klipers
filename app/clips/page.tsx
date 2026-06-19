@@ -7,11 +7,11 @@ import { AnimatedPage } from "@/components/motion/animated-page";
 import { StaggeredList, StaggeredItem } from "@/components/motion/staggered-list";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { SummaryTile } from "@/components/shared/summary-tile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatBytes, formatDate, formatSeconds } from "@/lib/formatters";
-import { getClipStatusVariant } from "@/lib/status-helpers";
 import { requireCurrentUser } from "@/server/current-user";
 import { listClipsForUser } from "@/server/clips";
 
@@ -41,6 +41,12 @@ export default async function ClipsPage() {
   const shouldRefresh = clips.some(
     (clip) => clip.status === "PENDING" || clip.status === "PROCESSING",
   );
+  const readyCount = clips.filter(
+    (clip) => clip.status === "COMPLETED" && clip.hasOutput,
+  ).length;
+  const queuedCount = clips.filter(
+    (clip) => clip.status === "PENDING" || clip.status === "PROCESSING",
+  ).length;
 
   return (
     <DashboardShell user={user}>
@@ -61,8 +67,8 @@ export default async function ClipsPage() {
           }
         />
 
-        <section className="mt-8">
-          {clips.length === 0 ? (
+        {clips.length === 0 ? (
+          <section className="mt-8">
             <EmptyState
               icon={Scissors}
               title="No clips created yet"
@@ -76,8 +82,16 @@ export default async function ClipsPage() {
                 </Button>
               }
             />
-          ) : (
-            <StaggeredList className="grid gap-4">
+          </section>
+        ) : (
+          <>
+            <section className="mt-8 grid gap-4 sm:grid-cols-3">
+              <SummaryTile icon={Scissors} label="Total clips" value={String(clips.length)} />
+              <SummaryTile icon={Download} label="Ready" value={String(readyCount)} accent />
+              <SummaryTile icon={Clock3} label="In queue" value={String(queuedCount)} />
+            </section>
+
+            <StaggeredList className="mt-6 grid gap-4">
               {clips.map((clip) => {
               const canUseOutput = clip.status === "COMPLETED" && clip.hasOutput;
 
@@ -99,7 +113,7 @@ export default async function ClipsPage() {
                           >
                             {clip.title}
                           </Link>
-                          <Badge variant={getClipStatusVariant(clip.status)}>{clip.status}</Badge>
+                          <StatusBadge kind="clip" status={clip.status} />
                         </div>
                         <p className="mt-1 text-sm leading-6 text-muted-foreground">
                           {getClipStatusCopy(clip.status, clip.hasOutput)}
@@ -160,8 +174,8 @@ export default async function ClipsPage() {
               );
             })}
             </StaggeredList>
-          )}
-        </section>
+          </>
+        )}
       </AnimatedPage>
     </DashboardShell>
   );

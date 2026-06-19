@@ -17,11 +17,11 @@ import { ClipStatusRefresh } from "@/components/clips/clip-status-refresh";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { AnimatedPage } from "@/components/motion/animated-page";
 import { PageHeader } from "@/components/shared/page-header";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBytes, formatDate, formatSeconds } from "@/lib/formatters";
-import { getClipStatusVariant } from "@/lib/status-helpers";
 import { auth } from "@/lib/auth";
 import { requireCurrentUser } from "@/server/current-user";
 import { getClipForUser } from "@/server/clips";
@@ -117,6 +117,15 @@ export default async function ClipDetailPage({
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
   const failedMessage = clip.errorMessage ?? clip.latestJob?.errorMessage;
 
+  const sourceDuration =
+    clip.video.durationSeconds && clip.video.durationSeconds > 0
+      ? clip.video.durationSeconds
+      : null;
+  const clampPct = (value: number) => Math.min(100, Math.max(0, value));
+  const rangeLeft = sourceDuration !== null ? clampPct((clip.startSeconds / sourceDuration) * 100) : 0;
+  const rangeRight = sourceDuration !== null ? clampPct((clip.endSeconds / sourceDuration) * 100) : 100;
+  const rangeWidth = Math.max(rangeRight - rangeLeft, 1.5);
+
   return (
     <DashboardShell user={user}>
       <ClipStatusRefresh enabled={isRefreshing} />
@@ -139,7 +148,7 @@ export default async function ClipDetailPage({
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <Badge variant={getClipStatusVariant(clip.status)}>{clip.status}</Badge>
+        <StatusBadge kind="clip" status={clip.status} />
         <Badge variant="outline">
           <Scissors aria-hidden="true" />
           {formatSeconds(clip.durationSeconds)}
@@ -180,6 +189,38 @@ export default async function ClipDetailPage({
               </div>
             )}
           </CardContent>
+          <div className="space-y-3 border-t border-border p-4">
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary">
+                Trim range
+              </p>
+              <span className="font-mono text-xs text-muted-foreground">
+                {sourceDuration !== null
+                  ? `of ${formatSeconds(sourceDuration)} source`
+                  : "Source length unknown"}
+              </span>
+            </div>
+            <div
+              className="relative h-2.5 w-full overflow-hidden rounded-full bg-secondary"
+              aria-hidden="true"
+            >
+              <div
+                className="absolute inset-y-0 rounded-full bg-primary"
+                style={{ left: `${rangeLeft}%`, width: `${rangeWidth}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+                IN {formatSeconds(clip.startSeconds)}
+              </span>
+              <span>CLIP {formatSeconds(clip.durationSeconds)}</span>
+              <span className="inline-flex items-center gap-1.5">
+                OUT {formatSeconds(clip.endSeconds)}
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+              </span>
+            </div>
+          </div>
         </Card>
 
         <div className="space-y-6">
@@ -268,7 +309,10 @@ export default async function ClipDetailPage({
           </CardHeader>
           <CardContent>
             <dl>
-              <DetailRow label="Status" value={clip.status} />
+              <DetailRow
+                label="Status"
+                value={clip.status.charAt(0) + clip.status.slice(1).toLowerCase()}
+              />
               <DetailRow label="Size" value={formatBytes(clip.sizeBytes, "Not available")} />
               <DetailRow label="Updated" value={formatDate(clip.updatedAt)} />
               <DetailRow label="File" value={canUseOutput ? "clip.mp4" : "Not available"} />

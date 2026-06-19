@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { signIn } from "next-auth/react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -23,16 +24,19 @@ export function OAuthSignInButton({
   return (
     <Button
       type="button"
-      className="w-full justify-start"
+      className="h-11 w-full justify-start gap-3"
       variant="secondary"
       disabled={isPending}
+      aria-busy={isPending}
       onClick={() => {
         setIsPending(true);
         void signIn(provider, { redirectTo });
       }}
     >
-      {icon}
-      {isPending ? "Opening provider..." : children}
+      <span className="flex size-5 items-center justify-center text-foreground" aria-hidden="true">
+        {isPending ? <Loader2 className="size-4 animate-spin" /> : icon}
+      </span>
+      {isPending ? "Opening provider…" : children}
     </Button>
   );
 }

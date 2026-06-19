@@ -5,6 +5,7 @@ import { HardDrive, Scissors } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { AnimatedPage } from "@/components/motion/animated-page";
 import { PageHeader } from "@/components/shared/page-header";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { VideoClipperWorkspace } from "@/components/videos/video-clipper-workspace";
 import { auth } from "@/lib/auth";
@@ -62,7 +63,7 @@ export default async function VideoDetailPage({
         />
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{video.status}</Badge>
+          <StatusBadge kind="video" status={video.status} />
           <Badge variant="outline">
             <HardDrive aria-hidden="true" />
             Local storage

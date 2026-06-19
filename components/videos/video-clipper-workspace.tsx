@@ -206,6 +206,19 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
       ? endSeconds - startSeconds
       : 0;
 
+  const timelineTotal = durationLimit && durationLimit > 0 ? durationLimit : null;
+  const clampPct = (value: number) => Math.min(100, Math.max(0, value));
+  const startPct =
+    timelineTotal !== null && startSeconds !== null
+      ? clampPct((startSeconds / timelineTotal) * 100)
+      : null;
+  const endPct =
+    timelineTotal !== null && endSeconds !== null
+      ? clampPct((endSeconds / timelineTotal) * 100)
+      : null;
+  const currentPct = timelineTotal !== null ? clampPct((currentTime / timelineTotal) * 100) : 0;
+  const hasValidRange = startPct !== null && endPct !== null && endPct > startPct;
+
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -361,6 +374,42 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
               </div>
             )}
           </CardContent>
+          <div className="space-y-3 border-t border-border p-4">
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary">
+                Timeline
+              </p>
+              <span className="font-mono text-xs text-muted-foreground">
+                {timelineTotal !== null ? formatSeconds(timelineTotal) : "Detected in player"}
+              </span>
+            </div>
+            <div
+              className="relative h-2.5 w-full overflow-hidden rounded-full bg-secondary"
+              aria-hidden="true"
+            >
+              {hasValidRange ? (
+                <div
+                  className="absolute inset-y-0 rounded-full bg-primary"
+                  style={{ left: `${startPct}%`, width: `${(endPct ?? 0) - (startPct ?? 0)}%` }}
+                />
+              ) : null}
+              <div
+                className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full bg-foreground"
+                style={{ left: `${currentPct}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+                IN {startSeconds !== null ? formatSeconds(startSeconds) : "--"}
+              </span>
+              <span>CLIP {formatSeconds(Math.max(selectedDuration, 0))}</span>
+              <span className="inline-flex items-center gap-1.5">
+                OUT {endSeconds !== null ? formatSeconds(endSeconds) : "--"}
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+              </span>
+            </div>
+          </div>
         </Card>
 
         <Card className="shadow-panel">
@@ -395,7 +444,10 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                       min={0}
                       step="0.1"
                       type="number"
+                      inputMode="decimal"
                       className="min-w-0"
+                      aria-invalid={errors.startSeconds ? true : undefined}
+                      aria-describedby={errors.startSeconds ? "start-seconds-error" : undefined}
                       {...register("startSeconds")}
                     />
                     <Button type="button" variant="secondary" className="shrink-0" onClick={setStartHere}>
@@ -404,7 +456,9 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                     </Button>
                   </div>
                   {errors.startSeconds ? (
-                    <p className="text-xs text-destructive">{errors.startSeconds.message}</p>
+                    <p id="start-seconds-error" role="alert" className="text-xs text-destructive">
+                      {errors.startSeconds.message}
+                    </p>
                   ) : null}
                 </div>
 
@@ -418,7 +472,10 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                       min={0}
                       step="0.1"
                       type="number"
+                      inputMode="decimal"
                       className="min-w-0"
+                      aria-invalid={errors.endSeconds ? true : undefined}
+                      aria-describedby={errors.endSeconds ? "end-seconds-error" : undefined}
                       {...register("endSeconds")}
                     />
                     <Button type="button" variant="secondary" className="shrink-0" onClick={setEndHere}>
@@ -427,7 +484,9 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                     </Button>
                   </div>
                   {errors.endSeconds ? (
-                    <p className="text-xs text-destructive">{errors.endSeconds.message}</p>
+                    <p id="end-seconds-error" role="alert" className="text-xs text-destructive">
+                      {errors.endSeconds.message}
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -439,24 +498,47 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
                     Selection
                   </p>
                   <span className="font-mono text-xs text-muted-foreground">
-                    {formatSeconds(Math.max(selectedDuration, 0))}
+                    Min {MIN_CLIP_SECONDS}s · Max 5m
                   </span>
                 </div>
-                <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-                  <p>Current {formatSeconds(currentTime)}</p>
-                  <p>Min {MIN_CLIP_SECONDS}s</p>
-                  <p>Max 5m</p>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      label: "Start",
+                      value: startSeconds !== null ? formatSeconds(startSeconds) : "--",
+                    },
+                    {
+                      label: "End",
+                      value: endSeconds !== null ? formatSeconds(endSeconds) : "--",
+                    },
+                    { label: "Length", value: formatSeconds(Math.max(selectedDuration, 0)) },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="rounded-md border border-border/70 bg-background/40 p-2.5 text-center"
+                    >
+                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80">
+                        {stat.label}
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-foreground">
+                        {stat.value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
+                <p className="mt-3 font-mono text-xs text-muted-foreground">
+                  Current {formatSeconds(currentTime)}
+                </p>
               </div>
 
               {helperError ? (
-                <div className="rounded-md border border-warning/35 bg-warning/10 p-3">
+                <div role="status" className="rounded-md border border-warning/35 bg-warning/10 p-3">
                   <p className="text-sm leading-6 text-warning">{helperError}</p>
                 </div>
               ) : null}
 
               {errorMessage ? (
-                <div className="rounded-md border border-destructive/35 bg-destructive/10 p-3">
+                <div role="alert" className="rounded-md border border-destructive/35 bg-destructive/10 p-3">
                   <p className="inline-flex items-center gap-2 text-sm font-semibold text-destructive">
                     <AlertCircle className="size-4" aria-hidden="true" />
                     {errorMessage}
@@ -465,7 +547,7 @@ export function VideoClipperWorkspace({ video }: { video: VideoDetail }) {
               ) : null}
 
               {successMessage ? (
-                <div className="rounded-md border border-primary/25 bg-primary/10 p-3">
+                <div role="status" className="rounded-md border border-primary/25 bg-primary/10 p-3">
                   <p className="text-sm font-semibold text-primary">{successMessage}</p>
                 </div>
               ) : null}

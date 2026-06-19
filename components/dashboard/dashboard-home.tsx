@@ -17,7 +17,7 @@ import { WorkflowCard } from "@/components/dashboard/workflow-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { pageTransition, staggerContainer } from "@/lib/motion";
 
 type DashboardStats = {
@@ -40,6 +40,45 @@ function formatCount(value: number) {
   return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
+function ClipLibrarySummary({
+  clipCount,
+  readyClipCount,
+}: {
+  clipCount: number;
+  readyClipCount: number;
+}) {
+  return (
+    <Card className="shadow-none">
+      <CardHeader>
+        <CardTitle>Clip library</CardTitle>
+        <CardDescription>Completed and in-progress clips across your sources.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+            <p className="font-mono text-3xl font-semibold text-primary">
+              {formatCount(readyClipCount)}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Ready to download</p>
+          </div>
+          <div className="rounded-md border border-border bg-secondary/45 p-4">
+            <p className="font-mono text-3xl font-semibold text-foreground">
+              {formatCount(clipCount)}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Total clips</p>
+          </div>
+        </div>
+        <Button asChild variant="secondary" className="w-full">
+          <Link href="/clips">
+            <Scissors aria-hidden="true" />
+            View clip library
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DashboardHome({
   processingJobs,
   stats,
@@ -54,6 +93,7 @@ export function DashboardHome({
       helper: "Videos owned by this workspace account.",
       icon: FileVideo2,
       tone: "neutral" as const,
+      href: "/videos",
     },
     {
       label: "Clips created",
@@ -61,6 +101,7 @@ export function DashboardHome({
       helper: "Clip records scoped to the current user.",
       icon: Scissors,
       tone: "accent" as const,
+      href: "/clips",
     },
     {
       label: "Processing",
@@ -75,8 +116,11 @@ export function DashboardHome({
       helper: "Completed clips ready for preview and download.",
       icon: Download,
       tone: "neutral" as const,
+      href: "/clips",
     },
   ];
+
+  const hasClips = stats.clipCount > 0;
 
   return (
     <motion.div initial="hidden" animate="visible" variants={pageTransition}>
@@ -94,12 +138,6 @@ export function DashboardHome({
         }
       />
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">Authenticated workspace</Badge>
-        <Badge variant="outline">Dark charcoal</Badge>
-        <Badge variant="outline">Neon lime actions</Badge>
-      </div>
-
       <motion.section
         variants={staggerContainer}
         className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-[1.25fr_1fr_0.92fr_0.92fr]"
@@ -116,19 +154,23 @@ export function DashboardHome({
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <ProcessingList jobs={processingJobs} />
-        <EmptyState
-          icon={Scissors}
-          title="Clip library waiting"
-          description="Create a range from a video detail page, then run npm run worker:clips to produce the next pending clip."
-          action={
-            <Button asChild variant="secondary">
-              <Link href="/videos">
-                <Scissors aria-hidden="true" />
-                Choose source
-              </Link>
-            </Button>
-          }
-        />
+        {hasClips ? (
+          <ClipLibrarySummary clipCount={stats.clipCount} readyClipCount={stats.readyClipCount} />
+        ) : (
+          <EmptyState
+            icon={Scissors}
+            title="Clip library waiting"
+            description="Create a range from a video detail page, then run npm run worker:clips to produce the next pending clip."
+            action={
+              <Button asChild variant="secondary">
+                <Link href="/videos">
+                  <Scissors aria-hidden="true" />
+                  Choose source
+                </Link>
+              </Button>
+            }
+          />
+        )}
       </section>
     </motion.div>
   );

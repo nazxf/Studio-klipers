@@ -1,34 +1,70 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, KeyRound, Play, Scissors, UploadCloud } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Download,
+  KeyRound,
+  Play,
+  Scissors,
+  UploadCloud,
+} from "lucide-react";
 
+import { AccentUnderline } from "@/components/shared/accent-underline";
+import { CardCorner } from "@/components/shared/card-corner";
+import { ConcentricRings } from "@/components/shared/concentric-rings";
+import { DoodleArrow } from "@/components/shared/doodle-arrow";
 import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 
-const workflow = [
-  "Upload MP4",
-  "Pick start and end",
-  "Create clip",
-  "Preview and download",
+const steps = [
+  {
+    icon: UploadCloud,
+    title: "Upload MP4",
+    description: "Bring in raw footage. Each source stays organized and ready to clip.",
+  },
+  {
+    icon: Scissors,
+    title: "Trim the range",
+    description: "Set a clean start and end on the timeline — no scrubbing guesswork.",
+  },
+  {
+    icon: Play,
+    title: "Render the clip",
+    description: "Queue the job and watch render status without leaving the workspace.",
+  },
+  {
+    icon: Download,
+    title: "Preview & deliver",
+    description: "Review the result and pull the final file the moment it lands.",
+  },
 ];
+
+const capabilities: Array<[string, string]> = [
+  ["Intake first", "Source video, timing, and render status stay in one focused view."],
+  ["Signal color", "Lime marks one thing at a time — action, selection, progress, done."],
+  ["Built to extend", "Auth and delivery slot in without redrawing the visual system."],
+];
+
+const heroPills = ["MP4 in", "Frame-safe trim", "Local render queue"];
+
+const viewport = { once: true, margin: "-80px" } as const;
 
 export default function HomePage() {
   return (
-    <main className="control-room min-h-[100dvh] overflow-hidden bg-background text-foreground">
-      <header className="border-b border-border bg-background/88 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <main className="control-room min-h-[100dvh] bg-background text-foreground">
+      <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 rounded-full border border-border bg-background/70 py-2 pl-3 pr-2 shadow-panel-sm backdrop-blur">
           <BrandMark />
-          <nav className="flex items-center gap-2" aria-label="Landing navigation">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
+          <nav className="flex items-center gap-1.5" aria-label="Landing navigation">
+            <Button asChild variant="ghost" className="hidden rounded-full sm:inline-flex">
               <Link href="/login">Login</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="rounded-full">
               <Link href="/dashboard">
                 Open cockpit
                 <ArrowRight aria-hidden="true" />
@@ -38,148 +74,198 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="surface-grid relative">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:min-h-[calc(92dvh-4rem)] lg:grid-cols-[0.88fr_1.12fr] lg:px-8 lg:py-16">
-          <motion.div
-            initial="hidden"
-            animate="visible"
+      {/* Hero */}
+      <section className="surface-grid relative overflow-hidden border-b border-border">
+        <ConcentricRings className="absolute -bottom-24 -left-20 h-80 w-80 opacity-50 sm:h-[26rem] sm:w-[26rem]" />
+        <ConcentricRings className="absolute -right-24 -top-16 hidden h-80 w-80 opacity-40 lg:block" />
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+          className="relative z-10 mx-auto flex max-w-4xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28"
+        >
+          <motion.div variants={staggerItem}>
+            <Badge variant="secondary">Creator control room</Badge>
+          </motion.div>
+          <motion.h1
             variants={staggerContainer}
-            className="flex max-w-2xl flex-col justify-center"
+            className="text-balance mt-6 text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-7xl"
           >
-            <motion.div variants={staggerItem}>
-              <Badge variant="secondary">Creator control room</Badge>
-            </motion.div>
-            <motion.h1
-              variants={staggerItem}
-              className="text-balance mt-6 text-5xl font-semibold tracking-tight text-foreground sm:text-6xl"
-            >
-              Studio Klipers
-            </motion.h1>
-            <motion.p
-              variants={staggerItem}
-              className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg"
-            >
-              Turn long creator footage into clean clip decisions inside a focused workspace built
-              for intake, timing, render status, and delivery.
-            </motion.p>
-            <motion.div variants={staggerItem} className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg">
-                <Link href="/dashboard">
-                  Open cockpit
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-              </Button>
-              <Button asChild variant="secondary" size="lg">
-                <Link href="/login">
-                  Login UI
-                  <KeyRound aria-hidden="true" />
-                </Link>
-              </Button>
-            </motion.div>
-            <motion.ul
-              variants={staggerItem}
-              className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2"
-            >
-              {workflow.map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
-                  {item}
-                </li>
-              ))}
-            </motion.ul>
+            <motion.span variants={staggerItem} className="block">
+              Long footage in.
+            </motion.span>
+            <motion.span variants={staggerItem} className="block">
+              <AccentUnderline delay={0.5}>Clean clips out.</AccentUnderline>
+            </motion.span>
+          </motion.h1>
+          <motion.p
+            variants={staggerItem}
+            className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg"
+          >
+            Studio Klipers is a focused workspace for the clipping pass — intake, timing,
+            render status, and delivery, without the editor bloat.
+          </motion.p>
+          <motion.div variants={staggerItem} className="relative mt-8 flex flex-col gap-3 sm:flex-row">
+            <DoodleArrow
+              delay={0.95}
+              className="absolute right-full top-1/2 hidden h-16 w-28 -translate-y-1/2 -translate-x-1 sm:block"
+            />
+            <Button asChild size="lg">
+              <Link href="/dashboard">
+                Open cockpit
+                <span
+                  aria-hidden="true"
+                  className="flex size-6 items-center justify-center rounded-full bg-primary-foreground/15"
+                >
+                  <ArrowRight />
+                </span>
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" size="lg">
+              <Link href="/login">
+                Login UI
+                <KeyRound aria-hidden="true" />
+              </Link>
+            </Button>
           </motion.div>
+          <motion.ul
+            variants={staggerItem}
+            className="mt-8 flex flex-wrap justify-center gap-2"
+            aria-label="What the workspace handles"
+          >
+            {heroPills.map((pill) => (
+              <li
+                key={pill}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-medium text-muted-foreground"
+              >
+                <Check className="size-3.5 text-primary" aria-hidden="true" />
+                {pill}
+              </li>
+            ))}
+          </motion.ul>
+        </motion.div>
+      </section>
 
-          <motion.div
+      {/* How it works */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="max-w-2xl">
+            <p className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+              <span aria-hidden="true" className="h-px w-6 bg-primary" />
+              The clipping pass
+            </p>
+            <h2 className="mt-3 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Four steps from raw footage to a finished clip.
+            </h2>
+          </div>
+
+          <motion.ol
             initial="hidden"
-            animate="visible"
-            variants={fadeUp}
-            className="relative flex items-center lg:justify-end"
+            whileInView="visible"
+            viewport={viewport}
+            variants={staggerContainer}
+            className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
-            <Card className="w-full overflow-hidden shadow-panel">
-              <CardContent className="p-0">
-                <div className="border-b border-border bg-secondary/65 px-5 py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative size-10 overflow-hidden rounded-lg border border-primary/20 bg-card">
-                        <Image src="/brand-mark.png" alt="" fill sizes="40px" className="object-cover" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold tracking-tight">Creator workspace</p>
-                        <p className="font-mono text-[11px] text-muted-foreground">Static product preview</p>
-                      </div>
-                    </div>
-                    <Badge>Ready</Badge>
+            {steps.map((step, index) => (
+              <motion.li
+                key={step.title}
+                variants={staggerItem}
+                className="panel-edge group relative overflow-hidden rounded-xl border border-border bg-card p-5"
+              >
+                <CardCorner className="-bottom-12 -right-12 top-auto" />
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-10 items-center justify-center rounded-lg border border-primary/20 bg-secondary text-primary">
+                      <step.icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="font-mono text-xs font-semibold text-muted-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
                   </div>
+                  <h3 className="mt-4 text-base font-semibold tracking-tight">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
                 </div>
-                <div className="grid gap-0 md:grid-cols-[1fr_0.78fr]">
-                  <div className="border-b border-border p-5 md:border-b-0 md:border-r">
-                    <div className="aspect-video rounded-lg border border-border bg-background p-3">
-                      <div className="relative flex h-full items-center justify-center overflow-hidden rounded-md bg-secondary">
-                        <div className="absolute inset-x-5 top-5 h-px bg-border" aria-hidden="true" />
-                        <div className="absolute bottom-5 left-5 right-5 h-8 rounded border border-border bg-background/75" aria-hidden="true" />
-                        <div className="flex size-14 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary">
-                          <Play className="ml-0.5 size-6" aria-hidden="true" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-3 gap-2">
-                      <div className="h-2 rounded-full bg-primary" />
-                      <div className="h-2 rounded-full bg-border" />
-                      <div className="h-2 rounded-full bg-border" />
-                    </div>
-                  </div>
-                  <div className="space-y-4 p-5">
-                    <div className="rounded-md border border-border bg-secondary/60 p-4">
-                      <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                        <UploadCloud className="size-4 text-primary" aria-hidden="true" />
-                        Upload source
-                      </div>
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        Keep the original video organized before clipping.
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-border bg-secondary/60 p-4">
-                      <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                        <Scissors className="size-4 text-primary" aria-hidden="true" />
-                        Select a clean range
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                        <span className="rounded border border-border bg-card px-2 py-2 font-mono">00:14.2</span>
-                        <span className="rounded border border-border bg-card px-2 py-2 font-mono">00:42.8</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </motion.li>
+            ))}
+          </motion.ol>
         </div>
       </section>
 
-      <section className="border-t border-border bg-secondary/35">
-        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-10 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+      {/* Why it stays focused */}
+      <section className="border-b border-border bg-secondary/25">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8 lg:py-20">
           <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              Workflow signal
+            <p className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+              <span aria-hidden="true" className="h-px w-6 bg-primary" />
+              Design intent
             </p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-              Built around the clipping pass.
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Built around the work, not the chrome.
             </h2>
           </div>
-          <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr]">
-            {[
-              ["Intake first", "Source video, timing decisions, and render status stay close together."],
-              ["Signal color", "Lime marks action, selection, progress, and success only."],
-              ["Phase ready", "Auth can connect next without replacing the visual system."],
-            ].map(([title, description]) => (
-              <div key={title} className="panel-edge rounded-lg border border-border bg-card p-5 md:first:row-span-2">
-                <h2 className="text-base font-semibold">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {capabilities.map(([title, description]) => (
+              <div
+                key={title}
+                className="panel-edge group relative overflow-hidden rounded-xl border border-border bg-card p-5"
+              >
+                <CardCorner />
+                <div className="relative">
+                  <h3 className="text-base font-semibold">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Closing CTA */}
+      <section className="surface-grid border-b border-border">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="panel-edge flex flex-col items-start gap-6 rounded-2xl border border-border bg-card p-8 sm:p-10 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-xl">
+              <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                Open the workspace and make the first cut.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
+                Step into the cockpit, or preview the login experience first.
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+              <Button asChild size="lg">
+                <Link href="/dashboard">
+                  Open cockpit
+                  <span
+                    aria-hidden="true"
+                    className="flex size-6 items-center justify-center rounded-full bg-primary-foreground/15"
+                  >
+                    <ArrowRight />
+                  </span>
+                </Link>
+              </Button>
+              <Button asChild variant="secondary" size="lg">
+                <Link href="/login">Login UI</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-8 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+          <BrandMark />
+          <div className="flex items-center gap-5 text-sm text-muted-foreground">
+            <Link href="/login" className="transition-colors hover:text-foreground">
+              Login
+            </Link>
+            <Link href="/dashboard" className="transition-colors hover:text-foreground">
+              Dashboard
+            </Link>
+            <span className="font-mono text-xs">© 2026 Studio Klipers</span>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

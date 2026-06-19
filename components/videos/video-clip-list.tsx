@@ -1,9 +1,8 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate, formatSeconds } from "@/lib/formatters";
-import { getClipStatusVariant } from "@/lib/status-helpers";
 
 type VideoClip = {
   id: string;
@@ -43,7 +42,7 @@ export function VideoClipList({ clips }: { clips: VideoClip[] }) {
                       <p className="truncate text-sm font-semibold text-foreground">
                         {clip.title}
                       </p>
-                      <Badge variant={getClipStatusVariant(clip.status)}>{clip.status}</Badge>
+                      <StatusBadge kind="clip" status={clip.status} />
                     </div>
                     <p className="mt-1 font-mono text-xs text-muted-foreground">
                       {formatSeconds(clip.startSeconds)} to {formatSeconds(clip.endSeconds)}

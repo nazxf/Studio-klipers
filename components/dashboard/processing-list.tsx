@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Clock3, FileVideo2, Scissors } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { staggerContainer, staggerItem, statusPulse } from "@/lib/motion";
@@ -26,22 +26,6 @@ function getJobIcon(status: ProcessingJobItem["status"]) {
   }
 
   return FileVideo2;
-}
-
-function getBadgeVariant(status: ProcessingJobItem["status"]) {
-  if (status === "PROCESSING") {
-    return "default";
-  }
-
-  if (status === "PENDING") {
-    return "warning";
-  }
-
-  if (status === "FAILED") {
-    return "error";
-  }
-
-  return "success";
 }
 
 export function ProcessingList({ jobs }: { jobs: ProcessingJobItem[] }) {
@@ -88,7 +72,7 @@ export function ProcessingList({ jobs }: { jobs: ProcessingJobItem[] }) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-foreground">{job.title}</p>
-                        <Badge variant={getBadgeVariant(job.status)}>{job.status}</Badge>
+                        <StatusBadge kind="clip" status={job.status} />
                       </div>
                       <p className="mt-1 font-mono text-xs text-muted-foreground">{job.detail}</p>
                       <Progress className="mt-3" value={job.progress} />
